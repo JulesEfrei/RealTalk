@@ -1,9 +1,6 @@
 {
   "name": "real-talk",
   "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
   "devDependencies": {
     "@types/bun": "latest"
   },
