@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
+import { currentUser } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
 
-export default function Home() {
+export default async function Home() {
   const call = async () => {
     "use server";
     const res = await fetch("http://localhost:3000/protected", {
@@ -11,6 +12,9 @@ export default function Home() {
     });
     console.log(await res.json());
   };
+
+  const user = await currentUser();
+  console.log(user);
 
   return (
     <>

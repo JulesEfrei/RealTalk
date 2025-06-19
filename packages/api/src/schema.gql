@@ -1,0 +1,54 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Conversation {
+  clerkUserId: String!
+  createdAt: DateTime!
+  id: ID!
+  messages: [Message!]!
+  title: String!
+  updatedAt: DateTime!
+}
+
+input CreateConversationInput {
+  title: String!
+}
+
+input CreateMessageInput {
+  content: String!
+  conversationId: ID!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type Message {
+  content: String!
+  conversation: Conversation!
+  conversationId: ID!
+  createdAt: DateTime!
+  id: ID!
+}
+
+type Mutation {
+  createConversation(createConversationInput: CreateConversationInput!): Conversation!
+  createMessage(createMessageInput: CreateMessageInput!): Message!
+  removeConversation(id: ID!): Conversation!
+  removeMessage(id: ID!): Message!
+  updateConversation(updateConversationInput: UpdateConversationInput!): Conversation!
+}
+
+type Query {
+  conversation(id: ID!): Conversation!
+  conversations: [Conversation!]!
+  message(id: ID!): Message!
+  messages(conversationId: ID!): [Message!]!
+}
+
+input UpdateConversationInput {
+  id: ID!
+  title: String
+}
