@@ -1,17 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMessageInput } from './dto/create-message.input';
+import { RabbitMQService } from '../rabbitmq/rabbitmq.service';
 
 @Injectable()
 export class MessagesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private rabbitMQService: RabbitMQService,
+  ) {}
 
   async create(createMessageInput: CreateMessageInput, clerkUserId: string) {
-    // Vérifier que la conversation appartient à l'utilisateur
     const conversation = await this.prisma.conversation.findFirst({
-      where: { 
+      where: {
         id: createMessageInput.conversationId,
-        clerkUserId
+        clerkUserId,
       },
     });
 
@@ -19,18 +22,26 @@ export class MessagesService {
       throw new Error('Conversation not found or access denied');
     }
 
-    return this.prisma.message.create({
+    const message = await this.prisma.message.create({
       data: createMessageInput,
       include: { conversation: true },
     });
+
+    await this.rabbitMQService.publishMessage('message.created', {
+      id: message.id,
+      content: message.content,
+      conversationId: message.conversationId,
+      createdAt: message.createdAt,
+    });
+
+    return message;
   }
 
   async findAll(conversationId: string, clerkUserId: string) {
-    // Vérifier que la conversation appartient à l'utilisateur
     const conversation = await this.prisma.conversation.findFirst({
-      where: { 
+      where: {
         id: conversationId,
-        clerkUserId
+        clerkUserId,
       },
     });
 
