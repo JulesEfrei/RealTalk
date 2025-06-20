@@ -1,3 +1,4 @@
+import MessageSidebar from "@/components/sidebar/MessageSideBar";
 import { Button } from "@/components/ui/button";
 import { currentUser } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
@@ -10,7 +11,8 @@ export default async function Home() {
         Cookie: (await cookies()).toString(),
       },
     });
-    console.log(await res.json());
+    const data = await res.json();
+    console.log(data.user.data);
   };
 
   const user = await currentUser();
@@ -18,6 +20,7 @@ export default async function Home() {
 
   return (
     <>
+      <MessageSidebar />
       <h1>Hello World</h1>
       <form action={call}>
         <Button type={"submit"}>Call API</Button>
