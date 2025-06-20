@@ -1,3 +1,4 @@
+import MessageSidebar from "@/components/sidebar/MessageSideBar";
 import { Button } from "@/components/ui/button";
 import { cookies } from "next/headers";
 
@@ -9,11 +10,13 @@ export default function Home() {
         Cookie: (await cookies()).toString(),
       },
     });
-    console.log(await res.json());
+    const data = await res.json();
+    console.log(data.user.data);
   };
 
   return (
     <>
+      <MessageSidebar />
       <h1>Hello World</h1>
       <form action={call}>
         <Button type={"submit"}>Call API</Button>
