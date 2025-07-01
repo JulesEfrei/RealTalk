@@ -12,6 +12,8 @@ export class Message {
   @Field()
   content: string;
 
+  @Field()
+  senderId: string;
 
   @Field(() => Conversation)
   conversation: Conversation;

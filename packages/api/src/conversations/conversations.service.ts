@@ -7,35 +7,42 @@ import { UpdateConversationInput } from './dto/update-conversation.input';
 export class ConversationsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createConversationInput: CreateConversationInput, clerkUserId: string) {
+  async create(createConversationInput: CreateConversationInput) {
     return this.prisma.conversation.create({
-      data: {
-        ...createConversationInput,
-        clerkUserId,
-      },
+      data: createConversationInput,
     });
   }
 
   async findAll(clerkUserId: string) {
     return this.prisma.conversation.findMany({
-      where: { clerkUserId },
+      where: {
+        clerkUserIds: { has: clerkUserId },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async findOne(id: string, clerkUserId: string) {
     return this.prisma.conversation.findFirst({
-      where: { id, clerkUserId },
+      where: {
+        id,
+        clerkUserIds: { has: clerkUserId },
+      },
       include: { messages: true },
     });
   }
 
-  async update(updateConversationInput: UpdateConversationInput, clerkUserId: string) {
+  async update(
+    updateConversationInput: UpdateConversationInput,
+    clerkUserId: string,
+  ) {
     const { id, ...data } = updateConversationInput;
-    
-    // Vérifier que la conversation appartient à l'utilisateur
+
     const conversation = await this.prisma.conversation.findFirst({
-      where: { id, clerkUserId },
+      where: {
+        id,
+        clerkUserIds: { has: clerkUserId },
+      },
     });
 
     if (!conversation) {
@@ -49,9 +56,11 @@ export class ConversationsService {
   }
 
   async remove(id: string, clerkUserId: string) {
-    // Vérifier que la conversation appartient à l'utilisateur
     const conversation = await this.prisma.conversation.findFirst({
-      where: { id, clerkUserId },
+      where: {
+        id,
+        clerkUserIds: { has: clerkUserId },
+      },
     });
 
     if (!conversation) {

@@ -7,11 +7,10 @@ export class MessagesService {
   constructor(private prisma: PrismaService) {}
 
   async create(createMessageInput: CreateMessageInput, clerkUserId: string) {
-    // Vérifier que la conversation appartient à l'utilisateur
     const conversation = await this.prisma.conversation.findFirst({
-      where: { 
+      where: {
         id: createMessageInput.conversationId,
-        clerkUserId
+        clerkUserIds: { has: clerkUserId },
       },
     });
 
@@ -20,17 +19,19 @@ export class MessagesService {
     }
 
     return this.prisma.message.create({
-      data: createMessageInput,
+      data: {
+        ...createMessageInput,
+        senderId: clerkUserId,
+      },
       include: { conversation: true },
     });
   }
 
   async findAll(conversationId: string, clerkUserId: string) {
-    // Vérifier que la conversation appartient à l'utilisateur
     const conversation = await this.prisma.conversation.findFirst({
-      where: { 
+      where: {
         id: conversationId,
-        clerkUserId
+        clerkUserIds: { has: clerkUserId },
       },
     });
 
@@ -50,7 +51,7 @@ export class MessagesService {
       include: { conversation: true },
     });
 
-    if (!message || message.conversation.clerkUserId !== clerkUserId) {
+    if (!message || !message.conversation.clerkUserIds.includes(clerkUserId)) {
       throw new Error('Message not found or access denied');
     }
 
@@ -63,7 +64,7 @@ export class MessagesService {
       include: { conversation: true },
     });
 
-    if (!message || message.conversation.clerkUserId !== clerkUserId) {
+    if (!message || !message.conversation.clerkUserIds.includes(clerkUserId)) {
       throw new Error('Message not found or access denied');
     }
 

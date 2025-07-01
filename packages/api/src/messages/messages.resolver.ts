@@ -13,6 +13,7 @@ import { Message } from './models/message.model';
 import { ClerkAuth } from '../auth/clerk.decorator';
 import { Conversation } from '../conversations/models/conversation.model';
 import { PrismaService } from '../prisma/prisma.service';
+import { IAuthUser } from 'src/interfaces/auth.interface';
 
 @Resolver(() => Message)
 export class MessagesResolver {
@@ -24,7 +25,7 @@ export class MessagesResolver {
   @Mutation(() => Message)
   createMessage(
     @Args('createMessageInput') createMessageInput: CreateMessageInput,
-    @ClerkAuth() clerkUserId: string,
+    @ClerkAuth() { userId: clerkUserId }: IAuthUser,
   ) {
     return this.messagesService.create(createMessageInput, clerkUserId);
   }
@@ -32,7 +33,7 @@ export class MessagesResolver {
   @Query(() => [Message], { name: 'messages' })
   findAll(
     @Args('conversationId', { type: () => ID }) conversationId: string,
-    @ClerkAuth() clerkUserId: string,
+    @ClerkAuth() { userId: clerkUserId }: IAuthUser,
   ) {
     return this.messagesService.findAll(conversationId, clerkUserId);
   }
@@ -40,7 +41,7 @@ export class MessagesResolver {
   @Query(() => Message, { name: 'message' })
   findOne(
     @Args('id', { type: () => ID }) id: string,
-    @ClerkAuth() clerkUserId: string,
+    @ClerkAuth() { userId: clerkUserId }: IAuthUser,
   ) {
     return this.messagesService.findOne(id, clerkUserId);
   }
@@ -48,7 +49,7 @@ export class MessagesResolver {
   @Mutation(() => Message)
   removeMessage(
     @Args('id', { type: () => ID }) id: string,
-    @ClerkAuth() clerkUserId: string,
+    @ClerkAuth() { userId: clerkUserId }: IAuthUser,
   ) {
     return this.messagesService.remove(id, clerkUserId);
   }
@@ -56,12 +57,12 @@ export class MessagesResolver {
   @ResolveField('conversation', () => Conversation)
   async getConversation(
     @Parent() message: Message,
-    @ClerkAuth() clerkUserId: string,
+    @ClerkAuth() { userId: clerkUserId }: IAuthUser,
   ) {
     const conversation = await this.prisma.conversation.findFirst({
       where: {
         id: message.conversationId,
-        clerkUserId,
+        clerkUserIds: { has: clerkUserId },
       },
     });
 

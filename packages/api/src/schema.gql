@@ -3,7 +3,7 @@
 # ------------------------------------------------------
 
 type Conversation {
-  clerkUserId: String!
+  clerkUserIds: [String!]!
   createdAt: DateTime!
   id: ID!
   messages: [Message!]!
@@ -12,6 +12,7 @@ type Conversation {
 }
 
 input CreateConversationInput {
+  clerkUserIds: [String!]!
   title: String!
 }
 
@@ -31,6 +32,7 @@ type Message {
   conversationId: ID!
   createdAt: DateTime!
   id: ID!
+  senderId: String!
 }
 
 type Mutation {

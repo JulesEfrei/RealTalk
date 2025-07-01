@@ -1,19 +1,11 @@
-import { Controller, Get } from '@nestjs/common';
-import { AppService } from './app.service';
+import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import { Public } from './decorators/public.decorator';
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
-
   @Public()
-  @Get()
-  getHello(): string {
-    return "RealTalk";
-  }
-
-  @Get("/protected")
-  async protectedRoute(): Promise<string> {
-    return await this.appService.getHello();
+  @Get('/health')
+  health(@Res() res): string {
+    return res.status(HttpStatus.OK).json({ status: 'ok' });
   }
 }

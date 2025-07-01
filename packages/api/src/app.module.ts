@@ -3,13 +3,15 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { ClerkAuthGuard } from './auth/clerk-auth.guard';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { MessagesModule } from './messages/messages.module';
+import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
+import { FakeAuthGuard } from './auth/fake-auth.guard';
+import { ClerkAuthGuard } from './auth/clerk-auth.guard';
 
 @Module({
   imports: [
@@ -20,7 +22,8 @@ import { MessagesModule } from './messages/messages.module';
       driver: ApolloDriver,
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       sortSchema: true,
-      playground: true,
+      playground: false,
+      plugins: [ApolloServerPluginLandingPageLocalDefault()],
       context: ({ req }) => ({ req }),
     }),
     PrismaModule,
@@ -31,7 +34,7 @@ import { MessagesModule } from './messages/messages.module';
   providers: [
     {
       provide: APP_GUARD,
-      useClass: ClerkAuthGuard,
+      useClass: process.env.NODE_ENV === 'dev' ? FakeAuthGuard : ClerkAuthGuard,
     },
     AppService,
   ],

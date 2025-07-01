@@ -12,6 +12,4 @@ export class CreateMessageInput {
   @IsString()
   @IsNotEmpty()
   content: string;
-  
-
 }
