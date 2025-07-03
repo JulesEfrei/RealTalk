@@ -14,9 +14,8 @@ model Conversation {
   title        String
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  lastMessage  DateTime?
   messages     Message[]
-
-  @@index([clerkUserIds])
 }
 
 model Message {

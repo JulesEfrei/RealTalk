@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateConversationInput } from './dto/create-conversation.input';
 import { UpdateConversationInput } from './dto/update-conversation.input';
@@ -9,14 +9,17 @@ export class ConversationsService {
 
   async create(createConversationInput: CreateConversationInput) {
     return this.prisma.conversation.create({
-      data: createConversationInput,
+      data: {
+        title: createConversationInput.title,
+        clerkUserIds: createConversationInput.userIds,
+      },
     });
   }
 
   async findAll(clerkUserId: string) {
     return this.prisma.conversation.findMany({
       where: {
-        clerkUserIds: { has: clerkUserId },
+        clerkUserIds: { hasSome: [clerkUserId] },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -26,7 +29,7 @@ export class ConversationsService {
     return this.prisma.conversation.findFirst({
       where: {
         id,
-        clerkUserIds: { has: clerkUserId },
+        clerkUserIds: { hasSome: [clerkUserId] },
       },
       include: { messages: true },
     });
@@ -41,12 +44,12 @@ export class ConversationsService {
     const conversation = await this.prisma.conversation.findFirst({
       where: {
         id,
-        clerkUserIds: { has: clerkUserId },
+        clerkUserIds: { hasSome: [clerkUserId] },
       },
     });
 
     if (!conversation) {
-      throw new Error('Conversation not found or access denied');
+      throw new ForbiddenException('Conversation not found or access denied');
     }
 
     return this.prisma.conversation.update({
@@ -59,12 +62,12 @@ export class ConversationsService {
     const conversation = await this.prisma.conversation.findFirst({
       where: {
         id,
-        clerkUserIds: { has: clerkUserId },
+        clerkUserIds: { hasSome: [clerkUserId] },
       },
     });
 
     if (!conversation) {
-      throw new Error('Conversation not found or access denied');
+      throw new ForbiddenException('Conversation not found or access denied');
     }
 
     return this.prisma.conversation.delete({

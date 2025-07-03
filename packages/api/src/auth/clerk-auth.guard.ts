@@ -2,6 +2,7 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -12,7 +13,10 @@ import { GqlExecutionContext } from '@nestjs/graphql';
 
 @Injectable()
 export class ClerkAuthGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(
+    private reflector: Reflector,
+    private logger: Logger,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     //Make the `/health` endpoint public thanks to the @Public decorator
@@ -29,10 +33,9 @@ export class ClerkAuthGuard implements CanActivate {
       const request = context.switchToHttp().getRequest<Request>();
       const auth = getAuth(request);
 
-      console.log('HTTP Request Auth:', {
+      this.logger.debug('HTTP Request Auth:', {
         hasAuth: !!auth,
         userId: auth?.userId,
-        headers: request.headers,
       });
 
       if (!auth || !auth.userId) {
@@ -45,16 +48,18 @@ export class ClerkAuthGuard implements CanActivate {
       const gqlContext = GqlExecutionContext.create(context);
       const request = gqlContext.getContext().req;
 
-      console.log('GraphQL Request:', {
+      this.logger.debug('GraphQL Request:', {
         hasReq: !!request,
         headers: request?.headers,
         authorization: request?.headers?.authorization,
       });
 
       const auth = getAuth(request);
-      console.log(auth);
 
-      console.log('GraphQL Auth:', { hasAuth: !!auth, userId: auth?.userId });
+      this.logger.debug('GraphQL Auth:', {
+        hasAuth: !!auth,
+        userId: auth?.userId,
+      });
 
       if (!auth || !auth.userId) {
         throw new UnauthorizedException('Authentication required for GraphQL.');

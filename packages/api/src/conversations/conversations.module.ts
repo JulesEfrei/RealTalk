@@ -1,9 +1,13 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConversationsService } from './conversations.service';
 import { ConversationsResolver } from './conversations.resolver';
-import { MessagesService } from '../messages/messages.service';
+import { MessagesModule } from '../messages/messages.module';
+import { PrismaModule } from 'src/prisma/prisma.module';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
-  providers: [ConversationsResolver, ConversationsService, MessagesService],
+  imports: [forwardRef(() => MessagesModule), PrismaModule, UsersModule],
+  providers: [ConversationsResolver, ConversationsService],
+  exports: [ConversationsService],
 })
 export class ConversationsModule {}

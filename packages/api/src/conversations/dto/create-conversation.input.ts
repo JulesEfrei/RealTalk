@@ -12,5 +12,5 @@ export class CreateConversationInput {
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
-  clerkUserIds: string[];
+  userIds: string[];
 }

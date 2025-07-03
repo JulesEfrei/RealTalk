@@ -12,6 +12,8 @@ import { MessagesModule } from './messages/messages.module';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import { FakeAuthGuard } from './auth/fake-auth.guard';
 import { ClerkAuthGuard } from './auth/clerk-auth.guard';
+import { RabbitMQModule } from './rabbitmq/rabbitmq.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { ClerkAuthGuard } from './auth/clerk-auth.guard';
     PrismaModule,
     ConversationsModule,
     MessagesModule,
+    RabbitMQModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [

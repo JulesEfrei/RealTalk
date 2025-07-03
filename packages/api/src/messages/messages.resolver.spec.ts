@@ -1,29 +1,40 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MessagesResolver } from './messages.resolver';
 import { MessagesService } from './messages.service';
-import { PrismaService } from '../prisma/prisma.service';
 import { CreateMessageInput } from './dto/create-message.input';
 import { Message } from './models/message.model';
-import { IAuthUser } from '../interfaces/auth.interface';
+import { PrismaService } from '../prisma/prisma.service';
+import { ClientProxy, RmqRecordBuilder } from '@nestjs/microservices';
+import { ForbiddenException } from '@nestjs/common';
 import { Conversation } from '../conversations/models/conversation.model';
+import { UsersService } from '../users/users.service';
+import { User } from '../users/models/user.model';
+import { IAuthUser } from 'src/interfaces/auth.interface';
+
+// Mock the ClerkAuth decorator
+jest.mock('../auth/clerk.decorator', () => ({
+  ClerkAuth: () =>
+    jest.fn((target, key, descriptor) => {
+      const originalMethod = descriptor.value;
+      descriptor.value = function (...args: any[]) {
+        // Inject a mock IAuthUser object as the last argument
+        args.push({
+          userId: 'mockUserId',
+          sessionId: 'mockSessionId',
+          orgId: 'mockOrgId',
+        });
+        return originalMethod.apply(this, args);
+      };
+      return descriptor;
+    }),
+}));
 
 describe('MessagesResolver', () => {
   let resolver: MessagesResolver;
   let messagesService: MessagesService;
   let prismaService: PrismaService;
-
-  const mockMessagesService = {
-    create: jest.fn(),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
-  };
-
-  const mockPrismaService = {
-    conversation: {
-      findFirst: jest.fn(),
-    },
-  };
+  let usersService: UsersService;
+  let clientProxy: ClientProxy;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -31,11 +42,32 @@ describe('MessagesResolver', () => {
         MessagesResolver,
         {
           provide: MessagesService,
-          useValue: mockMessagesService,
+          useValue: {
+            create: jest.fn(),
+            findAll: jest.fn(),
+            findOne: jest.fn(),
+            remove: jest.fn(),
+          },
         },
         {
           provide: PrismaService,
-          useValue: mockPrismaService,
+          useValue: {
+            conversation: {
+              findFirst: jest.fn(),
+            },
+          },
+        },
+        {
+          provide: UsersService,
+          useValue: {
+            findUserById: jest.fn(),
+          },
+        },
+        {
+          provide: 'RABBITMQ_SERVICE',
+          useValue: {
+            emit: jest.fn(),
+          },
         },
       ],
     }).compile();
@@ -43,179 +75,208 @@ describe('MessagesResolver', () => {
     resolver = module.get<MessagesResolver>(MessagesResolver);
     messagesService = module.get<MessagesService>(MessagesService);
     prismaService = module.get<PrismaService>(PrismaService);
-
-    // Clear all mocks before each test
-    jest.clearAllMocks();
+    usersService = module.get<UsersService>(UsersService);
+    clientProxy = module.get<ClientProxy>('RABBITMQ_SERVICE');
   });
 
   it('should be defined', () => {
     expect(resolver).toBeDefined();
   });
 
-  describe('createMessage', () => {
-    it('should create a message', async () => {
-      const createMessageInput: CreateMessageInput = {
+  describe('getSender', () => {
+    it('should return the sender of the message', async () => {
+      const message: Message = {
+        id: '1',
+        content: 'test',
         conversationId: 'conv1',
-        content: 'Hello',
-      };
-      const user: IAuthUser = { userId: 'user1' };
-      const expectedResult: Message = {
-        id: 'msg1',
-        conversationId: 'conv1',
-        content: 'Test Message',
-        senderId: 'user1',
+        sender: { id: 'sender1', name: 'Sender User', avatar: '' } as User,
         createdAt: new Date(),
-        conversation: new Conversation(),
+        updatedAt: new Date(),
       };
+      const expectedUser: User = {
+        id: 'sender1',
+        name: 'Sender User',
+        avatar: '',
+      };
+      jest.spyOn(usersService, 'findUserById').mockResolvedValue(expectedUser);
 
-      mockMessagesService.create.mockResolvedValue(expectedResult);
+      const result = await resolver.getSender(message);
 
-      const result = await resolver.createMessage(createMessageInput, user);
+      expect(usersService.findUserById).toHaveBeenCalledWith(message.sender.id);
+      expect(result).toEqual(expectedUser);
+    });
+  });
 
-      expect(mockMessagesService.create).toHaveBeenCalledWith(
+  describe('createMessage', () => {
+    it('should create a message and emit an event', async () => {
+      const createMessageInput: CreateMessageInput = {
+        content: 'Hello',
+        conversationId: '1',
+      };
+      const expectedMessage: Message = {
+        id: 'msg1',
+        content: 'Hello',
+        conversationId: '1',
+        sender: { id: 'mockUserId', name: 'Mock User', avatar: '' } as User,
+        createdAt: new Date(),
+        conversation: {} as Conversation, // Mock conversation
+      };
+      jest.spyOn(messagesService, 'create').mockResolvedValue(expectedMessage);
+      jest.spyOn(clientProxy, 'emit').mockReturnValue({} as any);
+
+      const result = await resolver.createMessage(createMessageInput, {
+        userId: 'mockUserId',
+      } as IAuthUser);
+
+      expect(messagesService.create).toHaveBeenCalledWith(
         createMessageInput,
-        user.userId,
+        'mockUserId',
       );
-      expect(result).toEqual(expectedResult);
+      expect(clientProxy.emit).toHaveBeenCalledWith(
+        'message_created',
+        expect.any(RmqRecordBuilder),
+      );
+      expect(result).toEqual(expectedMessage);
     });
   });
 
   describe('findAll', () => {
     it('should return all messages for a conversation', async () => {
-      const conversationId = 'conv1';
-      const user: IAuthUser = { userId: 'user1' };
-      const expectedResult: Message[] = [
+      const conversationId = '1';
+      const expectedMessages: Message[] = [
         {
           id: 'msg1',
-          conversationId: 'conv1',
-          content: 'Test Message 1',
-          senderId: 'user1',
+          content: 'test',
+          conversationId: '1',
+          sender: { id: 'mockUserId', name: 'Mock User', avatar: '' } as User,
           createdAt: new Date(),
-          conversation: new Conversation(),
-        },
-        {
-          id: 'msg2',
-          conversationId: 'conv1',
-          content: 'Test Message 2',
-          senderId: 'user2',
-          createdAt: new Date(),
-          conversation: new Conversation(),
+          conversation: {} as Conversation,
         },
       ];
+      jest
+        .spyOn(messagesService, 'findAll')
+        .mockResolvedValue(expectedMessages);
 
-      mockMessagesService.findAll.mockResolvedValue(expectedResult);
+      const result = await resolver.findAll(conversationId, {
+        userId: 'mockUserId',
+      } as IAuthUser);
 
-      const result = await resolver.findAll(conversationId, user);
-
-      expect(mockMessagesService.findAll).toHaveBeenCalledWith(
+      expect(messagesService.findAll).toHaveBeenCalledWith(
         conversationId,
-        user.userId,
+        'mockUserId',
       );
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(expectedMessages);
     });
   });
 
   describe('findOne', () => {
-    it('should return a message by id', async () => {
-      const id = 'msg1';
-      const user: IAuthUser = { userId: 'user1' };
-      const expectedResult: Message = {
+    it('should return a single message by ID', async () => {
+      const messageId = '1';
+      const expectedMessage: Message = {
         id: 'msg1',
-        conversationId: 'conv1',
-        content: 'Test Message',
-        senderId: 'user1',
+        content: 'test',
+        conversationId: '1',
+        sender: { id: 'mockUserId', name: 'Mock User', avatar: '' } as User,
         createdAt: new Date(),
-        conversation: new Conversation(),
+        conversation: {} as Conversation,
       };
+      jest.spyOn(messagesService, 'findOne').mockResolvedValue(expectedMessage);
 
-      mockMessagesService.findOne.mockResolvedValue(expectedResult);
+      const result = await resolver.findOne(messageId, {
+        userId: 'mockUserId',
+      } as IAuthUser);
 
-      const result = await resolver.findOne(id, user);
-
-      expect(mockMessagesService.findOne).toHaveBeenCalledWith(id, user.userId);
-      expect(result).toEqual(expectedResult);
+      expect(messagesService.findOne).toHaveBeenCalledWith(
+        messageId,
+        'mockUserId',
+      );
+      expect(result).toEqual(expectedMessage);
     });
   });
 
   describe('removeMessage', () => {
     it('should remove a message', async () => {
-      const id = 'msg1';
-      const user: IAuthUser = { userId: 'user1' };
-      const expectedResult: Message = {
+      const messageId = '1';
+      const expectedMessage: Message = {
         id: 'msg1',
-        conversationId: 'conv1',
-        content: 'Test Message',
-        senderId: 'user1',
+        content: 'test',
+        conversationId: '1',
+        sender: { id: 'mockUserId', name: 'Mock User', avatar: '' } as User,
         createdAt: new Date(),
-        conversation: new Conversation(),
+        conversation: {} as Conversation,
       };
+      jest.spyOn(messagesService, 'remove').mockResolvedValue(expectedMessage);
 
-      mockMessagesService.remove.mockResolvedValue(expectedResult);
+      const result = await resolver.removeMessage(messageId, {
+        userId: 'mockUserId',
+      } as IAuthUser);
 
-      const result = await resolver.removeMessage(id, user);
-
-      expect(mockMessagesService.remove).toHaveBeenCalledWith(id, user.userId);
-      expect(result).toEqual(expectedResult);
+      expect(messagesService.remove).toHaveBeenCalledWith(
+        messageId,
+        'mockUserId',
+      );
+      expect(result).toEqual(expectedMessage);
     });
   });
 
   describe('getConversation', () => {
-    it('should return the conversation for a message', async () => {
+    it('should return the conversation for a message if user has access', async () => {
       const message: Message = {
         id: 'msg1',
+        content: 'test',
         conversationId: 'conv1',
-        content: 'Test Message',
-        senderId: 'user1',
+        sender: { id: 'mockUserId', name: 'Mock User', avatar: '' } as User,
         createdAt: new Date(),
-        conversation: new Conversation(),
+        conversation: {} as Conversation,
       };
-      const user: IAuthUser = { userId: 'user1' };
-      const expectedResult = {
+      const expectedConversation: Conversation = {
         id: 'conv1',
         title: 'Test Conversation',
-        clerkUserIds: ['user1', 'user2'],
+        clerkUserIds: ['mockUserId'],
         createdAt: new Date(),
         updatedAt: new Date(),
+        messages: [],
       };
+      jest
+        .spyOn(prismaService.conversation, 'findFirst')
+        .mockResolvedValue(expectedConversation);
 
-      mockPrismaService.conversation.findFirst.mockResolvedValue(
-        expectedResult,
-      );
+      const result = await resolver.getConversation(message, {
+        userId: 'mockUserId',
+      } as IAuthUser);
 
-      const result = await resolver.getConversation(message, user);
-
-      expect(mockPrismaService.conversation.findFirst).toHaveBeenCalledWith({
+      expect(prismaService.conversation.findFirst).toHaveBeenCalledWith({
         where: {
           id: message.conversationId,
-          clerkUserIds: { has: user.userId },
+          clerkUserIds: { hasSome: ['mockUserId'] },
         },
       });
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(expectedConversation);
     });
 
-    it('should throw an error if conversation not found', async () => {
+    it('should throw ForbiddenException if conversation not found or access denied', async () => {
       const message: Message = {
         id: 'msg1',
+        content: 'test',
         conversationId: 'conv1',
-        content: 'Test Message',
-        senderId: 'user1',
+        sender: { id: 'mockUserId', name: 'Mock User', avatar: '' } as User,
         createdAt: new Date(),
-        conversation: new Conversation(),
+        conversation: {} as Conversation,
       };
-      const user: IAuthUser = { userId: 'user1' };
-
-      mockPrismaService.conversation.findFirst.mockResolvedValue(null);
+      jest
+        .spyOn(prismaService.conversation, 'findFirst')
+        .mockResolvedValue(null);
 
       await expect(
-        resolver.getConversation(message, user),
+        resolver.getConversation(message, {
+          userId: 'mockUserId',
+        } as IAuthUser),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        resolver.getConversation(message, {
+          userId: 'mockUserId',
+        } as IAuthUser),
       ).rejects.toThrow('Conversation not found or access denied');
-
-      expect(mockPrismaService.conversation.findFirst).toHaveBeenCalledWith({
-        where: {
-          id: message.conversationId,
-          clerkUserIds: { has: user.userId },
-        },
-      });
     });
   });
 });

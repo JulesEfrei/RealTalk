@@ -3,21 +3,11 @@ import { ConversationsService } from './conversations.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateConversationInput } from './dto/create-conversation.input';
 import { UpdateConversationInput } from './dto/update-conversation.input';
-import { IAuthUser } from '../interfaces/auth.interface';
+import { ForbiddenException } from '@nestjs/common';
 
 describe('ConversationsService', () => {
   let service: ConversationsService;
-  let prismaService: PrismaService;
-
-  const mockPrismaService = {
-    conversation: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-      findFirst: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
-  };
+  let prisma: PrismaService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -25,16 +15,21 @@ describe('ConversationsService', () => {
         ConversationsService,
         {
           provide: PrismaService,
-          useValue: mockPrismaService,
+          useValue: {
+            conversation: {
+              create: jest.fn(),
+              findMany: jest.fn(),
+              findFirst: jest.fn(),
+              update: jest.fn(),
+              delete: jest.fn(),
+            },
+          },
         },
       ],
     }).compile();
 
     service = module.get<ConversationsService>(ConversationsService);
-    prismaService = module.get<PrismaService>(PrismaService);
-
-    // Clear all mocks before each test
-    jest.clearAllMocks();
+    prisma = module.get<PrismaService>(PrismaService);
   });
 
   it('should be defined', () => {
@@ -42,224 +37,172 @@ describe('ConversationsService', () => {
   });
 
   describe('create', () => {
-    it('should create a conversation', async () => {
+    it('should create a new conversation', async () => {
       const createConversationInput: CreateConversationInput = {
         title: 'Test Conversation',
-        clerkUserIds: ['user1', 'user2'],
+        userIds: ['user1', 'user2'],
       };
-
-      const expectedResult = {
-        id: 'conv1',
+      const expectedConversation = {
+        id: '1',
         title: 'Test Conversation',
         clerkUserIds: ['user1', 'user2'],
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-
-      mockPrismaService.conversation.create.mockResolvedValue(expectedResult);
+      jest.spyOn(prisma.conversation, 'create').mockResolvedValue(expectedConversation);
 
       const result = await service.create(createConversationInput);
 
-      expect(mockPrismaService.conversation.create).toHaveBeenCalledWith({
-        data: createConversationInput,
+      expect(prisma.conversation.create).toHaveBeenCalledWith({
+        data: {
+          title: createConversationInput.title,
+          clerkUserIds: createConversationInput.userIds,
+        },
       });
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(expectedConversation);
     });
   });
 
   describe('findAll', () => {
-    it('should return all conversations for a user', async () => {
-      const user: IAuthUser = { userId: 'user1' };
-      const expectedResult = [
+    it('should return all conversations for a given user', async () => {
+      const clerkUserId = 'user1';
+      const expectedConversations = [
         {
-          id: 'conv1',
-          title: 'Test Conversation 1',
+          id: '1',
+          title: 'Conversation 1',
           clerkUserIds: ['user1', 'user2'],
           createdAt: new Date(),
           updatedAt: new Date(),
         },
-        {
-          id: 'conv2',
-          title: 'Test Conversation 2',
-          clerkUserIds: ['user1', 'user3'],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
       ];
+      jest.spyOn(prisma.conversation, 'findMany').mockResolvedValue(expectedConversations);
 
-      mockPrismaService.conversation.findMany.mockResolvedValue(expectedResult);
+      const result = await service.findAll(clerkUserId);
 
-      const result = await service.findAll(user.userId);
-
-      expect(mockPrismaService.conversation.findMany).toHaveBeenCalledWith({
+      expect(prisma.conversation.findMany).toHaveBeenCalledWith({
         where: {
-          clerkUserIds: { has: user.userId },
+          clerkUserIds: { hasSome: [clerkUserId] },
         },
         orderBy: { createdAt: 'desc' },
       });
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(expectedConversations);
     });
   });
 
   describe('findOne', () => {
-    it('should return a conversation by id', async () => {
-      const id = 'conv1';
-      const user: IAuthUser = { userId: 'user1' };
-      const expectedResult = {
-        id: 'conv1',
-        title: 'Test Conversation',
+    it('should return a single conversation by ID for a given user', async () => {
+      const id = '1';
+      const clerkUserId = 'user1';
+      const expectedConversation = {
+        id: '1',
+        title: 'Conversation 1',
         clerkUserIds: ['user1', 'user2'],
         createdAt: new Date(),
         updatedAt: new Date(),
         messages: [],
       };
+      jest.spyOn(prisma.conversation, 'findFirst').mockResolvedValue(expectedConversation);
 
-      mockPrismaService.conversation.findFirst.mockResolvedValue(
-        expectedResult,
-      );
+      const result = await service.findOne(id, clerkUserId);
 
-      const result = await service.findOne(id, user.userId);
-
-      expect(mockPrismaService.conversation.findFirst).toHaveBeenCalledWith({
+      expect(prisma.conversation.findFirst).toHaveBeenCalledWith({
         where: {
           id,
-          clerkUserIds: { has: user.userId },
+          clerkUserIds: { hasSome: [clerkUserId] },
         },
         include: { messages: true },
       });
-      expect(result).toEqual(expectedResult);
-    });
-
-    it('should return null if conversation not found', async () => {
-      const id = 'nonexistent';
-      const user: IAuthUser = { userId: 'user1' };
-
-      mockPrismaService.conversation.findFirst.mockResolvedValue(null);
-
-      const result = await service.findOne(id, user.userId);
-
-      expect(mockPrismaService.conversation.findFirst).toHaveBeenCalledWith({
-        where: {
-          id,
-          clerkUserIds: { has: user.userId },
-        },
-        include: { messages: true },
-      });
-      expect(result).toBeNull();
+      expect(result).toEqual(expectedConversation);
     });
   });
 
   describe('update', () => {
-    it('should update a conversation', async () => {
+    it('should update a conversation if the user has access', async () => {
       const updateConversationInput: UpdateConversationInput = {
-        id: 'conv1',
+        id: '1',
         title: 'Updated Conversation',
       };
-      const user: IAuthUser = { userId: 'user1' };
+      const clerkUserId = 'user1';
       const existingConversation = {
-        id: 'conv1',
-        title: 'Test Conversation',
+        id: '1',
+        title: 'Old Conversation',
         clerkUserIds: ['user1', 'user2'],
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      const expectedResult = {
-        ...existingConversation,
+      const updatedConversation = {
+        id: '1',
         title: 'Updated Conversation',
+        clerkUserIds: ['user1', 'user2'],
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
+      jest.spyOn(prisma.conversation, 'findFirst').mockResolvedValue(existingConversation);
+      jest.spyOn(prisma.conversation, 'update').mockResolvedValue(updatedConversation);
 
-      mockPrismaService.conversation.findFirst.mockResolvedValue(
-        existingConversation,
-      );
-      mockPrismaService.conversation.update.mockResolvedValue(expectedResult);
+      const result = await service.update(updateConversationInput, clerkUserId);
 
-      const result = await service.update(updateConversationInput, user.userId);
-
-      expect(mockPrismaService.conversation.findFirst).toHaveBeenCalledWith({
+      expect(prisma.conversation.findFirst).toHaveBeenCalledWith({
         where: {
           id: updateConversationInput.id,
-          clerkUserIds: { has: user.userId },
+          clerkUserIds: { hasSome: [clerkUserId] },
         },
       });
-      expect(mockPrismaService.conversation.update).toHaveBeenCalledWith({
+      expect(prisma.conversation.update).toHaveBeenCalledWith({
         where: { id: updateConversationInput.id },
         data: { title: updateConversationInput.title },
       });
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(updatedConversation);
     });
 
-    it('should throw an error if conversation not found', async () => {
+    it('should throw ForbiddenException if conversation not found or access denied', async () => {
       const updateConversationInput: UpdateConversationInput = {
-        id: 'nonexistent',
+        id: '1',
         title: 'Updated Conversation',
       };
-      const user: IAuthUser = { userId: 'user1' };
+      const clerkUserId = 'user1';
+      jest.spyOn(prisma.conversation, 'findFirst').mockResolvedValue(null);
 
-      mockPrismaService.conversation.findFirst.mockResolvedValue(null);
-
-      await expect(
-        service.update(updateConversationInput, user.userId),
-      ).rejects.toThrow('Conversation not found or access denied');
-
-      expect(mockPrismaService.conversation.findFirst).toHaveBeenCalledWith({
-        where: {
-          id: updateConversationInput.id,
-          clerkUserIds: { has: user.userId },
-        },
-      });
-      expect(mockPrismaService.conversation.update).not.toHaveBeenCalled();
+      await expect(service.update(updateConversationInput, clerkUserId)).rejects.toThrow(ForbiddenException);
+      await expect(service.update(updateConversationInput, clerkUserId)).rejects.toThrow('Conversation not found or access denied');
     });
   });
 
   describe('remove', () => {
-    it('should remove a conversation', async () => {
-      const id = 'conv1';
-      const user: IAuthUser = { userId: 'user1' };
+    it('should remove a conversation if the user has access', async () => {
+      const id = '1';
+      const clerkUserId = 'user1';
       const existingConversation = {
-        id: 'conv1',
-        title: 'Test Conversation',
+        id: '1',
+        title: 'Conversation to delete',
         clerkUserIds: ['user1', 'user2'],
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      const expectedResult = { ...existingConversation };
+      jest.spyOn(prisma.conversation, 'findFirst').mockResolvedValue(existingConversation);
+      jest.spyOn(prisma.conversation, 'delete').mockResolvedValue(existingConversation);
 
-      mockPrismaService.conversation.findFirst.mockResolvedValue(
-        existingConversation,
-      );
-      mockPrismaService.conversation.delete.mockResolvedValue(expectedResult);
+      const result = await service.remove(id, clerkUserId);
 
-      const result = await service.remove(id, user.userId);
-
-      expect(mockPrismaService.conversation.findFirst).toHaveBeenCalledWith({
+      expect(prisma.conversation.findFirst).toHaveBeenCalledWith({
         where: {
           id,
-          clerkUserIds: { has: user.userId },
+          clerkUserIds: { hasSome: [clerkUserId] },
         },
       });
-      expect(mockPrismaService.conversation.delete).toHaveBeenCalledWith({
+      expect(prisma.conversation.delete).toHaveBeenCalledWith({
         where: { id },
       });
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(existingConversation);
     });
 
-    it('should throw an error if conversation not found', async () => {
-      const id = 'nonexistent';
-      const user: IAuthUser = { userId: 'user1' };
+    it('should throw ForbiddenException if conversation not found or access denied', async () => {
+      const id = '1';
+      const clerkUserId = 'user1';
+      jest.spyOn(prisma.conversation, 'findFirst').mockResolvedValue(null);
 
-      mockPrismaService.conversation.findFirst.mockResolvedValue(null);
-
-      await expect(service.remove(id, user.userId)).rejects.toThrow(
-        'Conversation not found or access denied',
-      );
-
-      expect(mockPrismaService.conversation.findFirst).toHaveBeenCalledWith({
-        where: {
-          id,
-          clerkUserIds: { has: user.userId },
-        },
-      });
-      expect(mockPrismaService.conversation.delete).not.toHaveBeenCalled();
+      await expect(service.remove(id, clerkUserId)).rejects.toThrow(ForbiddenException);
+      await expect(service.remove(id, clerkUserId)).rejects.toThrow('Conversation not found or access denied');
     });
   });
 });

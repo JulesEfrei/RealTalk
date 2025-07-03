@@ -2,27 +2,37 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConversationsResolver } from './conversations.resolver';
 import { ConversationsService } from './conversations.service';
 import { MessagesService } from '../messages/messages.service';
+import { UsersService } from '../users/users.service';
 import { CreateConversationInput } from './dto/create-conversation.input';
 import { UpdateConversationInput } from './dto/update-conversation.input';
-import { IAuthUser } from '../interfaces/auth.interface';
 import { Conversation } from './models/conversation.model';
+import { Message } from '../messages/models/message.model';
+import { User } from '../users/models/user.model';
+import { IAuthUser } from 'src/interfaces/auth.interface';
+
+// Mock the ClerkAuth decorator
+jest.mock('../auth/clerk.decorator', () => ({
+  ClerkAuth: () =>
+    jest.fn((target, key, descriptor) => {
+      const originalMethod = descriptor.value;
+      descriptor.value = function (...args: any[]) {
+        // Inject a mock IAuthUser object as the last argument
+        args.push({
+          userId: 'mockUserId',
+          sessionId: 'mockSessionId',
+          orgId: 'mockOrgId',
+        });
+        return originalMethod.apply(this, args);
+      };
+      return descriptor;
+    }),
+}));
 
 describe('ConversationsResolver', () => {
   let resolver: ConversationsResolver;
   let conversationsService: ConversationsService;
   let messagesService: MessagesService;
-
-  const mockConversationsService = {
-    create: jest.fn(),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
-  };
-
-  const mockMessagesService = {
-    findAll: jest.fn(),
-  };
+  let usersService: UsersService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -30,21 +40,34 @@ describe('ConversationsResolver', () => {
         ConversationsResolver,
         {
           provide: ConversationsService,
-          useValue: mockConversationsService,
+          useValue: {
+            create: jest.fn(),
+            findAll: jest.fn(),
+            findOne: jest.fn(),
+            update: jest.fn(),
+            remove: jest.fn(),
+          },
         },
         {
           provide: MessagesService,
-          useValue: mockMessagesService,
+          useValue: {
+            findAll: jest.fn(),
+          },
+        },
+        {
+          provide: UsersService,
+          useValue: {
+            findUsersByIds: jest.fn(),
+          },
         },
       ],
     }).compile();
 
     resolver = module.get<ConversationsResolver>(ConversationsResolver);
-    conversationsService = module.get<ConversationsService>(ConversationsService);
+    conversationsService =
+      module.get<ConversationsService>(ConversationsService);
     messagesService = module.get<MessagesService>(MessagesService);
-
-    // Clear all mocks before each test
-    jest.clearAllMocks();
+    usersService = module.get<UsersService>(UsersService);
   });
 
   it('should be defined', () => {
@@ -52,202 +75,238 @@ describe('ConversationsResolver', () => {
   });
 
   describe('createConversation', () => {
-    it('should create a conversation and include the current user', async () => {
+    it('should create a conversation and add clerkUserId if not present', async () => {
       const createConversationInput: CreateConversationInput = {
         title: 'Test Conversation',
-        clerkUserIds: ['user2'],
+        userIds: ['user1'],
       };
-      const user: IAuthUser = { userId: 'user1' };
-      const expectedResult: Conversation = {
-        id: 'conv1',
+      const expectedConversation: Conversation = {
+        id: '1',
         title: 'Test Conversation',
-        clerkUserIds: ['user2', 'user1'],
+        users: ['user1', 'mockUserId'],
         createdAt: new Date(),
         updatedAt: new Date(),
+        messages: [],
       };
-
-      mockConversationsService.create.mockResolvedValue(expectedResult);
+      jest
+        .spyOn(conversationsService, 'create')
+        .mockResolvedValue(expectedConversation);
 
       const result = await resolver.createConversation(
         createConversationInput,
-        user,
+        { userId: 'mockUserId' } as IAuthUser,
       );
 
-      // Check if the current user was added to clerkUserIds
-      expect(createConversationInput.clerkUserIds).toContain(user.userId);
-      expect(mockConversationsService.create).toHaveBeenCalledWith(
+      expect(createConversationInput.userIds).toContain('mockUserId');
+      expect(conversationsService.create).toHaveBeenCalledWith(
         createConversationInput,
       );
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(expectedConversation);
     });
 
-    it('should not add duplicate user to clerkUserIds', async () => {
+    it('should create a conversation without adding clerkUserId if already present', async () => {
       const createConversationInput: CreateConversationInput = {
         title: 'Test Conversation',
-        clerkUserIds: ['user1', 'user2'],
+        userIds: ['user1', 'mockUserId'],
       };
-      const user: IAuthUser = { userId: 'user1' };
-      const expectedResult: Conversation = {
-        id: 'conv1',
+      const expectedConversation: Conversation = {
+        id: '1',
+        title: 'Test Conversation',
+        clerkUserIds: ['user1', 'mockUserId'],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        messages: [],
+        users: [],
+      };
+      jest
+        .spyOn(conversationsService, 'create')
+        .mockResolvedValue(expectedConversation);
+
+      const result = await resolver.createConversation(
+        createConversationInput,
+        { userId: 'mockUserId' } as IAuthUser,
+      );
+
+      expect(createConversationInput.userIds).toEqual(['user1', 'mockUserId']);
+      expect(conversationsService.create).toHaveBeenCalledWith(
+        createConversationInput,
+      );
+      expect(result).toEqual(expectedConversation);
+    });
+  });
+
+  describe('getUsers', () => {
+    it('should return users for a given conversation', async () => {
+      const conversation: Conversation & { clerkUserIds: string[] } = {
+        id: '1',
         title: 'Test Conversation',
         clerkUserIds: ['user1', 'user2'],
         createdAt: new Date(),
         updatedAt: new Date(),
+        messages: [],
+        users: [],
       };
+      const expectedUsers: User[] = [
+        { id: 'user1', name: 'User 1', avatar: '' },
+        { id: 'user2', name: 'User 2', avatar: '' },
+      ];
+      jest
+        .spyOn(usersService, 'findUsersByIds')
+        .mockResolvedValue(expectedUsers);
 
-      mockConversationsService.create.mockResolvedValue(expectedResult);
+      const result = await resolver.getUsers(conversation);
 
-      const result = await resolver.createConversation(
-        createConversationInput,
-        user,
+      expect(usersService.findUsersByIds).toHaveBeenCalledWith(
+        conversation.clerkUserIds,
       );
-
-      // Check that clerkUserIds still has only unique values
-      expect(createConversationInput.clerkUserIds).toEqual(['user1', 'user2']);
-      expect(mockConversationsService.create).toHaveBeenCalledWith(
-        createConversationInput,
-      );
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(expectedUsers);
     });
   });
 
   describe('findAll', () => {
     it('should return all conversations for a user', async () => {
-      const user: IAuthUser = { userId: 'user1' };
-      const expectedResult: Conversation[] = [
+      const expectedConversations: Conversation[] = [
         {
-          id: 'conv1',
-          title: 'Test Conversation 1',
-          clerkUserIds: ['user1', 'user2'],
+          id: '1',
+          title: 'Test Conversation',
+          clerkUserIds: ['mockUserId'],
           createdAt: new Date(),
           updatedAt: new Date(),
-        },
-        {
-          id: 'conv2',
-          title: 'Test Conversation 2',
-          clerkUserIds: ['user1', 'user3'],
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          messages: [],
+          users: [],
         },
       ];
+      jest
+        .spyOn(conversationsService, 'findAll')
+        .mockResolvedValue(expectedConversations);
 
-      mockConversationsService.findAll.mockResolvedValue(expectedResult);
+      const result = await resolver.findAll({
+        userId: 'mockUserId',
+      } as IAuthUser);
 
-      const result = await resolver.findAll(user);
-
-      expect(mockConversationsService.findAll).toHaveBeenCalledWith(user.userId);
-      expect(result).toEqual(expectedResult);
+      expect(conversationsService.findAll).toHaveBeenCalledWith('mockUserId');
+      expect(result).toEqual(expectedConversations);
     });
   });
 
   describe('findOne', () => {
-    it('should return a conversation by id', async () => {
-      const id = 'conv1';
-      const user: IAuthUser = { userId: 'user1' };
-      const expectedResult: Conversation = {
-        id: 'conv1',
+    it('should return a single conversation by ID', async () => {
+      const expectedConversation: Conversation = {
+        id: '1',
         title: 'Test Conversation',
-        clerkUserIds: ['user1', 'user2'],
+        clerkUserIds: ['mockUserId'],
         createdAt: new Date(),
         updatedAt: new Date(),
+        messages: [],
+        users: [],
       };
+      jest
+        .spyOn(conversationsService, 'findOne')
+        .mockResolvedValue(expectedConversation);
 
-      mockConversationsService.findOne.mockResolvedValue(expectedResult);
+      const result = await resolver.findOne('1', {
+        userId: 'mockUserId',
+      } as IAuthUser);
 
-      const result = await resolver.findOne(id, user);
-
-      expect(mockConversationsService.findOne).toHaveBeenCalledWith(id, user.userId);
-      expect(result).toEqual(expectedResult);
+      expect(conversationsService.findOne).toHaveBeenCalledWith(
+        '1',
+        'mockUserId',
+      );
+      expect(result).toEqual(expectedConversation);
     });
   });
 
   describe('updateConversation', () => {
     it('should update a conversation', async () => {
       const updateConversationInput: UpdateConversationInput = {
-        id: 'conv1',
-        title: 'Updated Conversation',
+        id: '1',
+        title: 'Updated Name',
       };
-      const user: IAuthUser = { userId: 'user1' };
-      const expectedResult: Conversation = {
-        id: 'conv1',
-        title: 'Updated Conversation',
-        clerkUserIds: ['user1', 'user2'],
+      const expectedConversation: Conversation = {
+        id: '1',
+        title: 'Updated Name',
+        clerkUserIds: ['mockUserId'],
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-
-      mockConversationsService.update.mockResolvedValue(expectedResult);
+      jest
+        .spyOn(conversationsService, 'update')
+        .mockResolvedValue(expectedConversation);
 
       const result = await resolver.updateConversation(
         updateConversationInput,
-        user,
+        { userId: 'mockUserId' } as IAuthUser,
       );
 
-      expect(mockConversationsService.update).toHaveBeenCalledWith(
+      expect(conversationsService.update).toHaveBeenCalledWith(
         updateConversationInput,
-        user.userId,
+        'mockUserId',
       );
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(expectedConversation);
     });
   });
 
   describe('removeConversation', () => {
     it('should remove a conversation', async () => {
-      const id = 'conv1';
-      const user: IAuthUser = { userId: 'user1' };
-      const expectedResult: Conversation = {
-        id: 'conv1',
+      const expectedConversation: Conversation = {
+        id: '1',
         title: 'Test Conversation',
-        clerkUserIds: ['user1', 'user2'],
+        clerkUserIds: ['mockUserId'],
         createdAt: new Date(),
         updatedAt: new Date(),
+        messages: [],
+        users: [],
       };
+      jest
+        .spyOn(conversationsService, 'remove')
+        .mockResolvedValue(expectedConversation);
 
-      mockConversationsService.remove.mockResolvedValue(expectedResult);
+      const result = await resolver.removeConversation('1', {
+        userId: 'mockUserId',
+      } as IAuthUser);
 
-      const result = await resolver.removeConversation(id, user);
-
-      expect(mockConversationsService.remove).toHaveBeenCalledWith(id, user.userId);
-      expect(result).toEqual(expectedResult);
+      expect(conversationsService.remove).toHaveBeenCalledWith(
+        '1',
+        'mockUserId',
+      );
+      expect(result).toEqual(expectedConversation);
     });
   });
 
   describe('getMessages', () => {
-    it('should return messages for a conversation', async () => {
+    it('should return messages for a given conversation', async () => {
       const conversation: Conversation = {
-        id: 'conv1',
+        id: '1',
         title: 'Test Conversation',
-        clerkUserIds: ['user1', 'user2'],
+        users: [],
+        messages: [],
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      const user: IAuthUser = { userId: 'user1' };
-      const expectedResult = [
+      const expectedMessages: Message[] = [
         {
           id: 'msg1',
-          conversationId: 'conv1',
-          content: 'Test Message 1',
-          senderId: 'user1',
+          content: 'Hello',
+          conversationId: '1',
+          sender: { id: 'mockUserId', name: 'Mock User', avatar: '' } as User,
           createdAt: new Date(),
-        },
-        {
-          id: 'msg2',
-          conversationId: 'conv1',
-          content: 'Test Message 2',
-          senderId: 'user2',
-          createdAt: new Date(),
+          updatedAt: new Date(),
+          conversation: {} as Conversation,
         },
       ];
+      jest
+        .spyOn(messagesService, 'findAll')
+        .mockResolvedValue(expectedMessages);
 
-      mockMessagesService.findAll.mockResolvedValue(expectedResult);
+      const result = await resolver.getMessages(conversation, {
+        userId: 'mockUserId',
+      } as IAuthUser);
 
-      const result = await resolver.getMessages(conversation, user);
-
-      expect(mockMessagesService.findAll).toHaveBeenCalledWith(
+      expect(messagesService.findAll).toHaveBeenCalledWith(
         conversation.id,
-        user.userId,
+        'mockUserId',
       );
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(expectedMessages);
     });
   });
 });

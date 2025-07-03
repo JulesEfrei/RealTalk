@@ -1,5 +1,6 @@
 import React from "react";
-import { Search, Plus, MessageSquare } from "lucide-react";
+import Link from "next/link";
+import { Search, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +8,37 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { SidebarTrigger } from "../ui/sidebar";
+import { gql } from "@/lib/gql";
+import { GetAllConversationsQuery } from "@/lib/gql/graphql";
+import client from "@/lib/client";
+import { currentUser } from "@clerk/nextjs/server";
 
-const MessageSidebar = () => {
+const GetAllConversations = gql(`
+  query GetAllConversations {
+    conversations {
+      users {
+        id
+        avatar
+        initials
+      }
+      createdAt
+      id
+      title
+      updatedAt
+      lastMessage
+    }
+  }
+`);
+
+const MessageSidebar = async () => {
+  const { data } = await client.query<GetAllConversationsQuery>({
+    query: GetAllConversations,
+  });
+
+  const loggedUser = await currentUser();
+
+  if (!loggedUser) return null; // TODO: redirect to sign-in
+
   const onlineUsers = [
     {
       id: 1,
@@ -45,72 +75,6 @@ const MessageSidebar = () => {
       name: "David Kim",
       avatar: "/api/placeholder/32/32",
       initials: "DK",
-    },
-  ];
-
-  const conversations = [
-    {
-      id: 1,
-      title: "Team Project Discussion",
-      avatar: "/api/placeholder/40/40",
-      initials: "TP",
-      lastMessage: "14:32",
-      unreadCount: 3,
-      isToday: true,
-    },
-    {
-      id: 2,
-      title: "Sarah Chen",
-      avatar: "/api/placeholder/40/40",
-      initials: "SC",
-      lastMessage: "12:45",
-      unreadCount: 1,
-      isToday: true,
-    },
-    {
-      id: 3,
-      title: "Design Review",
-      avatar: "/api/placeholder/40/40",
-      initials: "DR",
-      lastMessage: "1 day ago",
-      unreadCount: 0,
-      isToday: false,
-    },
-    {
-      id: 4,
-      title: "Mike Johnson",
-      avatar: "/api/placeholder/40/40",
-      initials: "MJ",
-      lastMessage: "2 days ago",
-      unreadCount: 5,
-      isToday: false,
-    },
-    {
-      id: 5,
-      title: "Marketing Team",
-      avatar: "/api/placeholder/40/40",
-      initials: "MT",
-      lastMessage: "1 week ago",
-      unreadCount: 0,
-      isToday: false,
-    },
-    {
-      id: 6,
-      title: "Emma Wilson",
-      avatar: "/api/placeholder/40/40",
-      initials: "EW",
-      lastMessage: "2 weeks ago",
-      unreadCount: 2,
-      isToday: false,
-    },
-    {
-      id: 7,
-      title: "Development Updates",
-      avatar: "/api/placeholder/40/40",
-      initials: "DU",
-      lastMessage: "1 month ago",
-      unreadCount: 0,
-      isToday: false,
     },
   ];
 
@@ -166,44 +130,50 @@ const MessageSidebar = () => {
 
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-2">
-          {conversations.map((conversation) => (
-            <div
-              key={conversation.id}
-              className="flex items-center space-x-3 p-2 rounded-lg hover:bg-secondary cursor-pointer transition-colors"
-            >
-              <Avatar className="h-10 w-10">
-                <AvatarImage
-                  src={conversation.avatar}
-                  alt={conversation.title}
-                />
-                <AvatarFallback className="bg-foreground/20">
-                  {conversation.initials}
-                </AvatarFallback>
-              </Avatar>
+          {data.conversations.map((conversation) => {
+            const otherUser = conversation.users.find(
+              (user) => user.id !== loggedUser!.id
+            );
+            return (
+              <Link
+                key={conversation.id}
+                href={`/conversation/${conversation.id}`}
+                className="flex items-center space-x-3 p-2 rounded-lg hover:bg-secondary cursor-pointer transition-colors"
+              >
+                <Avatar className="h-10 w-10">
+                  <AvatarImage
+                    src={otherUser!.avatar}
+                    alt={conversation.title}
+                  />
+                  <AvatarFallback className="bg-foreground/20">
+                    {otherUser!.initials}
+                  </AvatarFallback>
+                </Avatar>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium text-gray-900 truncate">
-                    {conversation.title}
-                  </h4>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-gray-900 truncate">
+                      {conversation.title}
+                    </h4>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex flex-col items-end space-y-1">
-                <span className="text-xs text-gray-500">
-                  {conversation.lastMessage}
-                </span>
-                {conversation.unreadCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="h-4 min-w-4 rounded-full px-1 flex items-center justify-center text-xs"
-                  >
-                    {conversation.unreadCount}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          ))}
+                <div className="flex flex-col items-end space-y-1">
+                  <span className="text-xs text-gray-500">
+                    {conversation.lastMessage}
+                  </span>
+                  {0 > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="h-4 min-w-4 rounded-full px-1 flex items-center justify-center text-xs"
+                    >
+                      2
+                    </Badge>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </ScrollArea>
     </div>

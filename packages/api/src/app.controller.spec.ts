@@ -14,7 +14,7 @@ describe('AppController', () => {
     appController = app.get<AppController>(AppController);
   });
 
-    describe('Health check', () => {
+  describe('Health check', () => {
     it('should return a status of "ok"', () => {
       const res = {
         status: jest.fn().mockReturnThis(),

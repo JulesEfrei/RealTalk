@@ -3,10 +3,12 @@ import { MessagesService } from './messages.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMessageInput } from './dto/create-message.input';
 import { IAuthUser } from '../interfaces/auth.interface';
+import { MessagesGateway } from './messages.gateway';
 
 describe('MessagesService', () => {
   let service: MessagesService;
   let prismaService: PrismaService;
+  let messagesGateway: MessagesGateway;
 
   const mockPrismaService = {
     conversation: {
@@ -20,6 +22,10 @@ describe('MessagesService', () => {
     },
   };
 
+  const mockMessagesGateway = {
+    sendNewMessage: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -28,11 +34,16 @@ describe('MessagesService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
+        {
+          provide: MessagesGateway,
+          useValue: mockMessagesGateway,
+        },
       ],
     }).compile();
 
     service = module.get<MessagesService>(MessagesService);
     prismaService = module.get<PrismaService>(PrismaService);
+    messagesGateway = module.get<MessagesGateway>(MessagesGateway);
 
     // Clear all mocks before each test
     jest.clearAllMocks();
@@ -73,7 +84,7 @@ describe('MessagesService', () => {
       expect(mockPrismaService.conversation.findFirst).toHaveBeenCalledWith({
         where: {
           id: createMessageInput.conversationId,
-          clerkUserIds: { has: user.userId },
+          clerkUserIds: { hasSome: [user.userId] },
         },
       });
       expect(mockPrismaService.message.create).toHaveBeenCalledWith({
@@ -99,7 +110,7 @@ describe('MessagesService', () => {
       expect(mockPrismaService.conversation.findFirst).toHaveBeenCalledWith({
         where: {
           id: createMessageInput.conversationId,
-          clerkUserIds: { has: user.userId },
+          clerkUserIds: { hasSome: [user.userId] },
         },
       });
       expect(mockPrismaService.message.create).not.toHaveBeenCalled();
@@ -142,7 +153,7 @@ describe('MessagesService', () => {
       expect(mockPrismaService.conversation.findFirst).toHaveBeenCalledWith({
         where: {
           id: conversationId,
-          clerkUserIds: { has: user.userId },
+          clerkUserIds: { hasSome: [user.userId] },
         },
       });
       expect(mockPrismaService.message.findMany).toHaveBeenCalledWith({
@@ -165,7 +176,7 @@ describe('MessagesService', () => {
       expect(mockPrismaService.conversation.findFirst).toHaveBeenCalledWith({
         where: {
           id: conversationId,
-          clerkUserIds: { has: user.userId },
+          clerkUserIds: { hasSome: [user.userId] },
         },
       });
       expect(mockPrismaService.message.findMany).not.toHaveBeenCalled();
@@ -334,6 +345,26 @@ describe('MessagesService', () => {
         include: { conversation: true },
       });
       expect(mockPrismaService.message.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleMessageCreated', () => {
+    it('should call messagesGateway.sendNewMessage', async () => {
+      const message = {
+        id: 'msg1',
+        conversationId: 'conv1',
+        content: 'Hello',
+        senderId: 'user1',
+      };
+
+      await service.handleMessageCreated({ ...message, createdAt: new Date() }, {
+        getChannelRef: () => ({
+          ack: jest.fn(),
+        }),
+        getMessage: () => ({}),
+      } as any);
+
+      expect(mockMessagesGateway.sendNewMessage).toHaveBeenCalledWith(message);
     });
   });
 });

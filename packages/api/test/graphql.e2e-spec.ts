@@ -23,14 +23,14 @@ describe('GraphQL API (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     prismaService = app.get<PrismaService>(PrismaService);
-    
+
     // Mock the Clerk middleware
     app.use((req, res, next) => {
       req.auth = { userId: TEST_USER_ID };
       req.clerkAuth = { userId: TEST_USER_ID };
       next();
     });
-    
+
     await app.init();
 
     // Clean up the database before tests
@@ -68,9 +68,15 @@ describe('GraphQL API (e2e)', () => {
         .expect(200);
 
       expect(response.body.data.createConversation).toBeDefined();
-      expect(response.body.data.createConversation.title).toBe('Test Conversation');
-      expect(response.body.data.createConversation.clerkUserIds).toContain(TEST_USER_ID);
-      expect(response.body.data.createConversation.clerkUserIds).toContain('other-user-id');
+      expect(response.body.data.createConversation.title).toBe(
+        'Test Conversation',
+      );
+      expect(response.body.data.createConversation.clerkUserIds).toContain(
+        TEST_USER_ID,
+      );
+      expect(response.body.data.createConversation.clerkUserIds).toContain(
+        'other-user-id',
+      );
 
       // Save the conversation ID for later tests
       testConversationId = response.body.data.createConversation.id;
@@ -145,7 +151,9 @@ describe('GraphQL API (e2e)', () => {
 
       expect(response.body.data.updateConversation).toBeDefined();
       expect(response.body.data.updateConversation.id).toBe(testConversationId);
-      expect(response.body.data.updateConversation.title).toBe('Updated Test Conversation');
+      expect(response.body.data.updateConversation.title).toBe(
+        'Updated Test Conversation',
+      );
     });
   });
 
@@ -174,7 +182,9 @@ describe('GraphQL API (e2e)', () => {
         .expect(200);
 
       expect(response.body.data.createMessage).toBeDefined();
-      expect(response.body.data.createMessage.conversationId).toBe(testConversationId);
+      expect(response.body.data.createMessage.conversationId).toBe(
+        testConversationId,
+      );
       expect(response.body.data.createMessage.content).toBe('Test Message');
       expect(response.body.data.createMessage.senderId).toBe(TEST_USER_ID);
 
@@ -229,7 +239,9 @@ describe('GraphQL API (e2e)', () => {
       expect(response.body.data.message).toBeDefined();
       expect(response.body.data.message.id).toBe(testMessageId);
       expect(response.body.data.message.content).toBe('Test Message');
-      expect(response.body.data.message.conversationId).toBe(testConversationId);
+      expect(response.body.data.message.conversationId).toBe(
+        testConversationId,
+      );
     });
   });
 

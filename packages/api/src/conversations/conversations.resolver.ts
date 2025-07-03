@@ -15,12 +15,15 @@ import { ClerkAuth } from '../auth/clerk.decorator';
 import { MessagesService } from '../messages/messages.service';
 import { Message } from '../messages/models/message.model';
 import { IAuthUser } from 'src/interfaces/auth.interface';
+import { UsersService } from '../users/users.service';
+import { User } from '../users/models/user.model';
 
 @Resolver(() => Conversation)
 export class ConversationsResolver {
   constructor(
     private readonly conversationsService: ConversationsService,
     private readonly messagesService: MessagesService,
+    private readonly usersService: UsersService,
   ) {}
 
   @Mutation(() => Conversation)
@@ -29,11 +32,18 @@ export class ConversationsResolver {
     createConversationInput: CreateConversationInput,
     @ClerkAuth() { userId: clerkUserId }: IAuthUser,
   ) {
-    if (!createConversationInput.clerkUserIds.includes(clerkUserId)) {
-      createConversationInput.clerkUserIds.push(clerkUserId);
+    if (!createConversationInput.userIds.includes(clerkUserId)) {
+      createConversationInput.userIds.push(clerkUserId);
     }
 
     return this.conversationsService.create(createConversationInput);
+  }
+
+  @ResolveField('users', () => [User])
+  async getUsers(
+    @Parent() conversation: Conversation & { clerkUserIds: string[] },
+  ): Promise<User[]> {
+    return this.usersService.findUsersByIds(conversation.clerkUserIds);
   }
 
   @Query(() => [Conversation], { name: 'conversations' })

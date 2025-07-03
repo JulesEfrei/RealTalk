@@ -20,13 +20,13 @@ describe('AppController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     prismaService = app.get<PrismaService>(PrismaService);
-    
+
     // Mock the Clerk middleware
     app.use((req, res, next) => {
       req.auth = { userId: 'test-user-id' };
       next();
     });
-    
+
     await app.init();
   });
 
@@ -35,9 +35,6 @@ describe('AppController (e2e)', () => {
   });
 
   it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Alive!');
+    return request(app.getHttpServer()).get('/').expect(200).expect('Alive!');
   });
 });

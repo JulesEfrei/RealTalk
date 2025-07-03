@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/sidebar";
 import { DialogClose } from "@radix-ui/react-dialog";
 import ToggleTheme from "./ToggleTheme";
+import { Input } from "../ui/input";
 
 export function AppSidebar() {
   const labels = [
@@ -94,8 +95,19 @@ export function AppSidebar() {
                       Give your new label a name. Click save when you're done.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4">
-                    <p>FORM</p>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <label htmlFor="name" className="text-right">
+                        Name
+                      </label>
+                      <Input
+                        id="name"
+                        name="name"
+                        placeholder="Enter label name"
+                        className="col-span-3"
+                        required
+                      />
+                    </div>
                   </div>
                   <DialogFooter>
                     <DialogClose asChild>
