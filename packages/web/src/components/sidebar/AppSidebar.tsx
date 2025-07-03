@@ -55,7 +55,7 @@ export function AppSidebar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
-                <Link href="/messages">
+                <Link href="/conversation">
                   <HomeIcon />
                   Messages
                 </Link>

@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { useAuth } from "@clerk/nextjs";
 import { gql } from "@/lib/gql/gql";
@@ -10,6 +10,15 @@ import {
   Message,
   MessagesQuery,
 } from "@/lib/gql/graphql";
+import { ChatInput } from "../ui/chat/chat-input";
+import { Button } from "../ui/button";
+import { CornerDownLeft } from "lucide-react";
+import { ChatMessageList } from "../ui/chat/chat-message-list";
+import {
+  ChatBubble,
+  ChatBubbleAvatar,
+  ChatBubbleMessage,
+} from "../ui/chat/chat-bubble";
 
 interface Props {
   conversationId: string;
@@ -35,10 +44,10 @@ const MESSAGES_QUERY = gql(`
 
 const ConversationWrapper: (props: Props) => ReactNode = (props) => {
   const { conversationId } = props;
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [messages, setMessages] = useState<MessagesQuery["messages"]>([]);
-  const [newMessageContent, setNewMessageContent] = useState("");
   const [socket, setSocket] = useState<ReturnType<typeof io> | null>(null);
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
 
   const {
     loading: messagesLoading,
@@ -109,18 +118,19 @@ const ConversationWrapper: (props: Props) => ReactNode = (props) => {
   );
 
   const handleCreateMessage = async () => {
-    if (!newMessageContent.trim()) return; // Don't send empty messages
+    if (!inputRef.current?.value.trim()) return;
 
     try {
       await createMessage({
         variables: {
           createMessageInput: {
             conversationId,
-            content: newMessageContent,
+            content: inputRef.current.value,
           },
         },
       });
-      setNewMessageContent(""); // Clear input after sending
+
+      inputRef.current.value = "";
       console.log("Message created successfully!");
     } catch (error) {
       console.error("Error creating message:", error);
@@ -130,8 +140,7 @@ const ConversationWrapper: (props: Props) => ReactNode = (props) => {
   useEffect(() => {
     if (socket) {
       socket.on("newMessage", (message: Message) => {
-        console.log("New message received:", message);
-        setMessages((prevMessages) => [...prevMessages, message]); // Add new message to state
+        setMessages((prevMessages) => [...prevMessages, message]);
       });
     }
   }, [socket]);
@@ -141,48 +150,57 @@ const ConversationWrapper: (props: Props) => ReactNode = (props) => {
   }
 
   if (messagesError) {
-    console.log(messagesError);
-
     return <div>Error loading messages: {messagesError.message}</div>;
   }
 
   return (
-    <div>
-      <h1>Conversation ID: {conversationId}</h1>
-      <div
-        style={{
-          border: "1px solid gray",
-          height: "300px",
-          overflowY: "scroll",
-          padding: "10px",
-        }}
-      >
-        {messages.map((message) => (
-          <div key={message.id} style={{ marginBottom: "10px" }}>
-            <strong>
-              {message.sender?.firstName || message.sender?.email}:
-            </strong>{" "}
-            {message.content}
-            <div style={{ fontSize: "0.8em", color: "gray" }}>
-              {new Date(message.createdAt).toLocaleString()}
-            </div>
-          </div>
-        ))}
+    <div className="relative h-screen overflow-y-hidden p-4">
+      <div className="h-[calc(100%-100px)]">
+        <ChatMessageList>
+          {messages.map((message) => (
+            <ChatBubble
+              key={message.id}
+              variant={message.sender.id === userId ? "sent" : "received"}
+            >
+              <ChatBubbleAvatar
+                src={message.sender.avatar}
+                fallback={message.sender.initials}
+              />
+              <div className="relative my-3">
+                <ChatBubbleMessage
+                  variant={message.sender.id === userId ? "sent" : "received"}
+                >
+                  {message.content}
+                </ChatBubbleMessage>
+                <p className="absolute right-0 overflow-visible w-max mt-2 text-muted-foreground text-sm">
+                  {new Date(message.createdAt).toLocaleString()}
+                </p>
+              </div>
+            </ChatBubble>
+          ))}
+        </ChatMessageList>
       </div>
-      <div style={{ marginTop: "10px" }}>
-        <input
-          type="text"
-          value={newMessageContent}
-          onChange={(e) => setNewMessageContent(e.target.value)}
-          placeholder="Type your message..."
-          style={{ width: "calc(100% - 80px)", padding: "8px" }}
+      <div className="relative rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring p-1">
+        <ChatInput
+          placeholder="Type your message here..."
+          className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0"
+          ref={inputRef}
+          onKeyDown={(e) => {
+            if (e.code === "Enter" && (e.ctrlKey || e.metaKey)) {
+              handleCreateMessage();
+            }
+          }}
         />
-        <button
-          onClick={handleCreateMessage}
-          style={{ padding: "8px", marginLeft: "5px" }}
-        >
-          Send
-        </button>
+        <div className="flex items-center p-3 pt-0">
+          <Button
+            size="sm"
+            className="ml-auto gap-1.5"
+            onClick={handleCreateMessage}
+          >
+            Send Message
+            <CornerDownLeft className="size-3.5" />
+          </Button>
+        </div>
       </div>
     </div>
   );

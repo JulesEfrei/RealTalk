@@ -8,7 +8,6 @@ interface ConversationPageProps {
 
 const ConversationPage = async ({ params }: ConversationPageProps) => {
   const { id: conversationId } = await params;
-  console.log(conversationId);
 
   return <ConversationWrapper conversationId={conversationId} />;
 };
