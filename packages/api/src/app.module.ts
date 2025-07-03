@@ -10,7 +10,6 @@ import { join } from 'path';
 import { PrismaModule } from './prisma/prisma.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { MessagesModule } from './messages/messages.module';
-import { RabbitMQModule } from './rabbitmq/rabbitmq.module';
 
 @Module({
   imports: [
@@ -27,7 +26,6 @@ import { RabbitMQModule } from './rabbitmq/rabbitmq.module';
     PrismaModule,
     ConversationsModule,
     MessagesModule,
-    RabbitMQModule,
   ],
   controllers: [AppController],
   providers: [
