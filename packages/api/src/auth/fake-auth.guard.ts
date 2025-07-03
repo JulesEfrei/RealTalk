@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { getAuth } from '@clerk/express';
 import { IAuthUser } from '../interfaces/auth.interface';
@@ -8,7 +13,10 @@ import { Request } from 'express';
 
 @Injectable()
 export class FakeAuthGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly logger: Logger = new Logger(FakeAuthGuard.name),
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     //Make the `/health` endpoint public thanks to the @Public decorator
@@ -38,41 +46,39 @@ export class FakeAuthGuard implements CanActivate {
           error.message,
         );
       }
-    }
+    } else {
+      const gqlContext = GqlExecutionContext.create(context);
+      const request = gqlContext.getContext().req;
 
-    const gqlContext = GqlExecutionContext.create(context);
-    const request = gqlContext.getContext().req;
+      try {
+        const auth = await getAuth(request);
 
-    try {
-      const auth = await getAuth(request);
-      if (auth && auth.userId) {
-        const user: IAuthUser = {
-          userId: auth.userId,
-          sessionId: auth.sessionId,
-          orgId: auth.orgId,
-        };
-        request.auth = user;
-        return true;
+        if (auth && auth.userId) {
+          request.auth = auth;
+          return true;
+        }
+      } catch (error) {
+        // Clerk connection not available, proceed with fake auth
+        this.logger.debug(
+          'Clerk authentication failed, using fake auth:',
+          error.message,
+        );
       }
-    } catch (error) {
-      // Clerk connection not available, proceed with fake auth
-      console.warn(
-        'Clerk authentication failed, using fake auth:',
-        error.message,
-      );
+
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FakeAuthGuard should not be used in production');
+      }
+
+      const fakeUser: IAuthUser = {
+        userId:
+          process.env.CLERK_TEST_USER_ID || 'user_2yiwBHfjPNhFx1rMpmR71QqNlpj',
+      };
+
+      request.auth = fakeUser;
+
+      return true;
     }
 
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('FakeAuthGuard should not be used in production');
-    }
-
-    const fakeUser: IAuthUser = {
-      userId:
-        process.env.CLERK_TEST_USER_ID || 'user_2yiwBHfjPNhFx1rMpmR71QqNlpj',
-    };
-
-    request.auth = fakeUser;
-
-    return true;
+    return false;
   }
 }

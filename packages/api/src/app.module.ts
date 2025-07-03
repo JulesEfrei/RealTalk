@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, Logger } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
@@ -41,6 +41,7 @@ import { UsersModule } from './users/users.module';
       useClass: process.env.NODE_ENV === 'dev' ? FakeAuthGuard : ClerkAuthGuard,
     },
     AppService,
+    Logger,
   ],
 })
 export class AppModule {}

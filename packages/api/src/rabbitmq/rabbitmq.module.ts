@@ -10,7 +10,7 @@ const rabbitMQClientConfig = ClientsModule.registerAsync([
     useFactory: (configService: ConfigService) => ({
       transport: Transport.RMQ,
       options: {
-        urls: [configService.get<string>('RABBITMQ_URL')!],
+        urls: [configService.getOrThrow<string>('RABBITMQ_URL')],
         queue: 'messages_queue',
         queueOptions: {
           durable: true,

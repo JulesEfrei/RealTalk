@@ -15,7 +15,7 @@ import { GqlExecutionContext } from '@nestjs/graphql';
 export class ClerkAuthGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
-    private logger: Logger,
+    private readonly logger: Logger = new Logger(ClerkAuthGuard.name),
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -31,6 +31,7 @@ export class ClerkAuthGuard implements CanActivate {
 
     if (context.getType() === 'http') {
       const request = context.switchToHttp().getRequest<Request>();
+
       const auth = getAuth(request);
 
       this.logger.debug('HTTP Request Auth:', {
@@ -46,7 +47,7 @@ export class ClerkAuthGuard implements CanActivate {
       return true;
     } else {
       const gqlContext = GqlExecutionContext.create(context);
-      const request = gqlContext.getContext().req;
+      const request: Request = gqlContext.getContext().req;
 
       this.logger.debug('GraphQL Request:', {
         hasReq: !!request,

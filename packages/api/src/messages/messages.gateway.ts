@@ -60,9 +60,20 @@ export class MessagesGateway {
     this.logger.log(`Client ${client.id} left conversation ${conversationId}`);
   }
 
-  sendNewMessage(
+  async sendNewMessage(
     message: CreateMessageInput & { id: string; senderId: string },
   ) {
+    const conversation = await this.conversationsService.findOne(
+      message.conversationId,
+      message.senderId,
+    );
+
+    if (!conversation) {
+      throw new UnauthorizedException(
+        'Conversation not found or access denied.',
+      );
+    }
+
     this.server.to(message.conversationId).emit('newMessage', message);
     this.logger.log(
       `New message sent to conversation ${message.conversationId}: ${message.content}`,

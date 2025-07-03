@@ -20,6 +20,10 @@ export class UsersResolver {
   async getUsers(
     @Args('ids', { type: () => [String] }) ids: string[],
   ): Promise<User[]> {
-    return this.usersService.findUsersByIds(ids);
+    try {
+      return this.usersService.findUsersByIds(ids);
+    } catch (error) {
+      throw new InternalServerErrorException('Failed to fetch users');
+    }
   }
 }

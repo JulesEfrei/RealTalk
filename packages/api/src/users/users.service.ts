@@ -12,11 +12,11 @@ export class UsersService {
         firstName: clerkUser.firstName || undefined,
         lastName: clerkUser.lastName || undefined,
         avatar: clerkUser.imageUrl,
-        email: clerkUser.emailAddresses[0].emailAddress,
+        email: clerkUser.emailAddresses?.[0]?.emailAddress || '',
         initials:
           clerkUser.firstName && clerkUser.lastName
             ? `${clerkUser.firstName[0]}${clerkUser.lastName[0]}`
-            : clerkUser.emailAddresses[0]?.emailAddress?.slice(0, 2) || 'NA',
+            : clerkUser.emailAddresses?.[0]?.emailAddress?.slice(0, 2) || 'NA',
       };
     } catch (error) {
       console.error(`Error fetching user ${userId} from Clerk:`, error);
@@ -47,7 +47,7 @@ export class UsersService {
         initials:
           clerkUser.firstName && clerkUser.lastName
             ? `${clerkUser.firstName[0]}${clerkUser.lastName[0]}`
-            : clerkUser.emailAddresses[0].emailAddress.slice(0, 2),
+            : clerkUser.emailAddresses?.[0]?.emailAddress?.slice(0, 2) || 'NA',
       }));
     } catch (error) {
       console.error('Error fetching users from Clerk:', error);
