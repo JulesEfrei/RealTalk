@@ -1,13 +1,14 @@
 import { ObjectType, Field, ID } from '@nestjs/graphql';
 import { Message } from '../../messages/models/message.model';
+import { User } from '../../users/models/user.model';
 
 @ObjectType()
 export class Conversation {
   @Field(() => ID)
   id: string;
 
-  @Field()
-  clerkUserId: string;
+  @Field(() => [User])
+  users: User[];
 
   @Field()
   title: string;
@@ -20,4 +21,7 @@ export class Conversation {
 
   @Field()
   updatedAt: Date;
+
+  @Field(() => Date, { nullable: true })
+  lastMessage?: Date;
 }

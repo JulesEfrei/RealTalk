@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateConversationInput } from './dto/create-conversation.input';
 import { UpdateConversationInput } from './dto/update-conversation.input';
@@ -7,39 +7,49 @@ import { UpdateConversationInput } from './dto/update-conversation.input';
 export class ConversationsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createConversationInput: CreateConversationInput, clerkUserId: string) {
+  async create(createConversationInput: CreateConversationInput) {
     return this.prisma.conversation.create({
       data: {
-        ...createConversationInput,
-        clerkUserId,
+        title: createConversationInput.title,
+        clerkUserIds: createConversationInput.userIds,
       },
     });
   }
 
   async findAll(clerkUserId: string) {
     return this.prisma.conversation.findMany({
-      where: { clerkUserId },
+      where: {
+        clerkUserIds: { hasSome: [clerkUserId] },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async findOne(id: string, clerkUserId: string) {
     return this.prisma.conversation.findFirst({
-      where: { id, clerkUserId },
+      where: {
+        id,
+        clerkUserIds: { hasSome: [clerkUserId] },
+      },
       include: { messages: true },
     });
   }
 
-  async update(updateConversationInput: UpdateConversationInput, clerkUserId: string) {
+  async update(
+    updateConversationInput: UpdateConversationInput,
+    clerkUserId: string,
+  ) {
     const { id, ...data } = updateConversationInput;
-    
-    // Vérifier que la conversation appartient à l'utilisateur
+
     const conversation = await this.prisma.conversation.findFirst({
-      where: { id, clerkUserId },
+      where: {
+        id,
+        clerkUserIds: { hasSome: [clerkUserId] },
+      },
     });
 
     if (!conversation) {
-      throw new Error('Conversation not found or access denied');
+      throw new ForbiddenException('Conversation not found or access denied');
     }
 
     return this.prisma.conversation.update({
@@ -49,13 +59,15 @@ export class ConversationsService {
   }
 
   async remove(id: string, clerkUserId: string) {
-    // Vérifier que la conversation appartient à l'utilisateur
     const conversation = await this.prisma.conversation.findFirst({
-      where: { id, clerkUserId },
+      where: {
+        id,
+        clerkUserIds: { hasSome: [clerkUserId] },
+      },
     });
 
     if (!conversation) {
-      throw new Error('Conversation not found or access denied');
+      throw new ForbiddenException('Conversation not found or access denied');
     }
 
     return this.prisma.conversation.delete({

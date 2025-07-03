@@ -3,16 +3,18 @@
 # ------------------------------------------------------
 
 type Conversation {
-  clerkUserId: String!
   createdAt: DateTime!
   id: ID!
+  lastMessage: DateTime
   messages: [Message!]!
   title: String!
   updatedAt: DateTime!
+  users: [User!]!
 }
 
 input CreateConversationInput {
   title: String!
+  userIds: [String!]!
 }
 
 input CreateMessageInput {
@@ -31,6 +33,7 @@ type Message {
   conversationId: ID!
   createdAt: DateTime!
   id: ID!
+  sender: User!
 }
 
 type Mutation {
@@ -46,9 +49,20 @@ type Query {
   conversations: [Conversation!]!
   message(id: ID!): Message!
   messages(conversationId: ID!): [Message!]!
+  user(id: String!): User!
+  users(ids: [String!]!): [User!]!
 }
 
 input UpdateConversationInput {
   id: ID!
   title: String
+}
+
+type User {
+  avatar: String!
+  email: String!
+  firstName: String
+  id: ID!
+  initials: String!
+  lastName: String
 }

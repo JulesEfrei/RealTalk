@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import {
-  ClerkProvider,
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} from "@clerk/nextjs";
+import { ClerkProvider } from "@clerk/nextjs";
+
+import { ThemeProvider } from "@/components/ThemeProvider";
+import ApolloProviderWrapper from "@/components/ApolloProvider";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/sidebar/AppSidebar";
 
 export const metadata: Metadata = {
   title: "RealTalk",
@@ -21,18 +19,21 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <body>
-          <header className="flex justify-end items-center p-4 gap-4 h-16">
-            <SignedOut>
-              <SignInButton />
-              <SignUpButton />
-            </SignedOut>
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
-          </header>
-          {children}
+          <ApolloProviderWrapper>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <SidebarProvider>
+                <AppSidebar />
+                <main className="w-full">{children}</main>
+              </SidebarProvider>
+            </ThemeProvider>
+          </ApolloProviderWrapper>
         </body>
       </html>
     </ClerkProvider>

@@ -9,20 +9,20 @@ datasource db {
 }
 
 model Conversation {
-  id          String    @id @default(uuid())
-  clerkUserId String
-  title       String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  messages    Message[]
-
-  @@index([clerkUserId])
+  id           String    @id @default(uuid())
+  clerkUserIds String[]
+  title        String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastMessage  DateTime?
+  messages     Message[]
 }
 
 model Message {
   id             String       @id @default(uuid())
   conversationId String
   content        String
+  senderId       String
   createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 

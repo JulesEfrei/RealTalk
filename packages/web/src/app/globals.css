@@ -65,6 +65,7 @@
   --shadow-blur: var(--shadow-blur);
   --shadow-opacity: var(--shadow-opacity);
   --color-shadow-color: var(--shadow-color);
+  --color-brand: var(--brand);
 }
 
 :root {
@@ -119,6 +120,7 @@
   --shadow-xl: 0px 4px 8px -1px oklch(0.00 0 0 / 0.10), 0px 8px 10px -2px oklch(0.00 0 0 / 0.10);
   --shadow-2xl: 0px 4px 8px -1px oklch(0.00 0 0 / 0.25);
   --tracking-normal: 0em;
+  --brand: oklch(0.623 0.214 259.815);
 }
 
 .dark {
@@ -173,6 +175,7 @@
   --shadow-lg: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 4px 6px -1px oklch(0.00 0 0 / 0.10);
   --shadow-xl: 0 1px 3px 0px oklch(0.00 0 0 / 0.10), 0 8px 10px -1px oklch(0.00 0 0 / 0.10);
   --shadow-2xl: 0 1px 3px 0px oklch(0.00 0 0 / 0.25);
+  --brand: oklch(0.707 0.165 254.624);
 }
 
 @layer base {

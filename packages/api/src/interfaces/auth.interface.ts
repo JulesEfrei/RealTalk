@@ -1,4 +1,4 @@
-import { AuthObject } from "@clerk/backend";
+import { AuthObject } from '@clerk/backend';
 
 declare global {
   namespace Express {

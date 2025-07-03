@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMessageInput } from './dto/create-message.input';
 
@@ -7,35 +7,43 @@ export class MessagesService {
   constructor(private prisma: PrismaService) {}
 
   async create(createMessageInput: CreateMessageInput, clerkUserId: string) {
-    // Vérifier que la conversation appartient à l'utilisateur
     const conversation = await this.prisma.conversation.findFirst({
-      where: { 
+      where: {
         id: createMessageInput.conversationId,
-        clerkUserId
+        clerkUserIds: { hasSome: [clerkUserId] },
       },
     });
 
     if (!conversation) {
-      throw new Error('Conversation not found or access denied');
+      throw new ForbiddenException('Conversation not found or access denied');
     }
 
-    return this.prisma.message.create({
-      data: createMessageInput,
+    const newMessage = await this.prisma.message.create({
+      data: {
+        ...createMessageInput,
+        senderId: clerkUserId,
+      },
       include: { conversation: true },
     });
+
+    await this.prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { lastMessage: newMessage.createdAt },
+    });
+
+    return newMessage;
   }
 
   async findAll(conversationId: string, clerkUserId: string) {
-    // Vérifier que la conversation appartient à l'utilisateur
     const conversation = await this.prisma.conversation.findFirst({
-      where: { 
+      where: {
         id: conversationId,
-        clerkUserId
+        clerkUserIds: { hasSome: [clerkUserId] },
       },
     });
 
     if (!conversation) {
-      throw new Error('Conversation not found or access denied');
+      throw new ForbiddenException('Conversation not found or access denied');
     }
 
     return this.prisma.message.findMany({
@@ -50,8 +58,11 @@ export class MessagesService {
       include: { conversation: true },
     });
 
-    if (!message || message.conversation.clerkUserId !== clerkUserId) {
-      throw new Error('Message not found or access denied');
+    if (
+      !message ||
+      !message.conversation.clerkUserIds.some((id) => id === clerkUserId)
+    ) {
+      throw new ForbiddenException('Message not found or access denied');
     }
 
     return message;
@@ -63,8 +74,11 @@ export class MessagesService {
       include: { conversation: true },
     });
 
-    if (!message || message.conversation.clerkUserId !== clerkUserId) {
-      throw new Error('Message not found or access denied');
+    if (
+      !message ||
+      !message.conversation.clerkUserIds.some((id) => id === clerkUserId)
+    ) {
+      throw new ForbiddenException('Message not found or access denied');
     }
 
     return this.prisma.message.delete({

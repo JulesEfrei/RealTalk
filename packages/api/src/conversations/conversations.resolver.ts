@@ -14,35 +14,47 @@ import { Conversation } from './models/conversation.model';
 import { ClerkAuth } from '../auth/clerk.decorator';
 import { MessagesService } from '../messages/messages.service';
 import { Message } from '../messages/models/message.model';
+import { IAuthUser } from 'src/interfaces/auth.interface';
+import { UsersService } from '../users/users.service';
+import { User } from '../users/models/user.model';
 
 @Resolver(() => Conversation)
 export class ConversationsResolver {
   constructor(
     private readonly conversationsService: ConversationsService,
     private readonly messagesService: MessagesService,
+    private readonly usersService: UsersService,
   ) {}
 
   @Mutation(() => Conversation)
   createConversation(
     @Args('createConversationInput')
     createConversationInput: CreateConversationInput,
-    @ClerkAuth() clerkUserId: string,
+    @ClerkAuth() { userId: clerkUserId }: IAuthUser,
   ) {
-    return this.conversationsService.create(
-      createConversationInput,
-      clerkUserId,
-    );
+    if (!createConversationInput.userIds.includes(clerkUserId)) {
+      createConversationInput.userIds.push(clerkUserId);
+    }
+
+    return this.conversationsService.create(createConversationInput);
+  }
+
+  @ResolveField('users', () => [User])
+  async getUsers(
+    @Parent() conversation: Conversation & { clerkUserIds: string[] },
+  ): Promise<User[]> {
+    return this.usersService.findUsersByIds(conversation.clerkUserIds);
   }
 
   @Query(() => [Conversation], { name: 'conversations' })
-  findAll(@ClerkAuth() clerkUserId: string) {
-    return this.conversationsService.findAll(clerkUserId);
+  findAll(@ClerkAuth() clerkUser: IAuthUser) {
+    return this.conversationsService.findAll(clerkUser.userId);
   }
 
   @Query(() => Conversation, { name: 'conversation' })
   findOne(
     @Args('id', { type: () => ID }) id: string,
-    @ClerkAuth() clerkUserId: string,
+    @ClerkAuth() { userId: clerkUserId }: IAuthUser,
   ) {
     return this.conversationsService.findOne(id, clerkUserId);
   }
@@ -51,7 +63,7 @@ export class ConversationsResolver {
   updateConversation(
     @Args('updateConversationInput')
     updateConversationInput: UpdateConversationInput,
-    @ClerkAuth() clerkUserId: string,
+    @ClerkAuth() { userId: clerkUserId }: IAuthUser,
   ) {
     return this.conversationsService.update(
       updateConversationInput,
@@ -62,7 +74,7 @@ export class ConversationsResolver {
   @Mutation(() => Conversation)
   removeConversation(
     @Args('id', { type: () => ID }) id: string,
-    @ClerkAuth() clerkUserId: string,
+    @ClerkAuth() { userId: clerkUserId }: IAuthUser,
   ) {
     return this.conversationsService.remove(id, clerkUserId);
   }
@@ -70,7 +82,7 @@ export class ConversationsResolver {
   @ResolveField('messages', () => [Message])
   async getMessages(
     @Parent() conversation: Conversation,
-    @ClerkAuth() clerkUserId: string,
+    @ClerkAuth() { userId: clerkUserId }: IAuthUser,
   ) {
     return this.messagesService.findAll(conversation.id, clerkUserId);
   }
