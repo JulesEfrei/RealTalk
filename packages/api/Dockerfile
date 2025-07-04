@@ -38,6 +38,8 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/generated ./generated
 
+COPY .env .
+
 EXPOSE 3000
 
 CMD ["node", "dist/main"]
