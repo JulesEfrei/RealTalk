@@ -8,7 +8,7 @@ export default function ConversationLayout({
   return (
     <div className="flex">
       <MessageSidebar />
-      <main className="flex-1">{children}</main>
+      <section className="w-full h-full">{children}</section>
     </div>
   );
 }

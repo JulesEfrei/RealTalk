@@ -29,7 +29,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarMenuAction,
   SidebarGroupAction,
 } from "@/components/ui/sidebar";
 import { DialogClose } from "@radix-ui/react-dialog";
@@ -55,7 +54,7 @@ export function AppSidebar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
-                <Link href="/messages">
+                <Link href="/conversation">
                   <HomeIcon />
                   Messages
                 </Link>
@@ -92,7 +91,8 @@ export function AppSidebar() {
                   <DialogHeader>
                     <DialogTitle>Create new label</DialogTitle>
                     <DialogDescription>
-                      Give your new label a name. Click save when you're done.
+                      Give your new label a name. Click save when you&apos;re
+                      done.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">

@@ -1,14 +1,13 @@
 import ConversationWrapper from "@/components/conversation/ConversationWrapper";
 
 interface ConversationPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 const ConversationPage = async ({ params }: ConversationPageProps) => {
   const { id: conversationId } = await params;
-  console.log(conversationId);
 
   return <ConversationWrapper conversationId={conversationId} />;
 };

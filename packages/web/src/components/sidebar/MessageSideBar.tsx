@@ -1,8 +1,7 @@
 import React from "react";
 import Link from "next/link";
-import { Search, Plus } from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -10,8 +9,10 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { SidebarTrigger } from "../ui/sidebar";
 import { gql } from "@/lib/gql";
 import { GetAllConversationsQuery } from "@/lib/gql/graphql";
-import client from "@/lib/client";
 import { currentUser } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
+import createClient from "@/lib/client";
+import { NewChatButton } from "./NewChatButton";
 
 const GetAllConversations = gql(`
   query GetAllConversations {
@@ -31,6 +32,7 @@ const GetAllConversations = gql(`
 `);
 
 const MessageSidebar = async () => {
+  const client = createClient(await cookies());
   const { data } = await client.query<GetAllConversationsQuery>({
     query: GetAllConversations,
   });
@@ -91,11 +93,7 @@ const MessageSidebar = async () => {
             className="pl-10"
           />
         </div>
-
-        <Button className="w-full justify-center gap-2">
-          <Plus className="mr-2 h-4 w-4" />
-          New chat
-        </Button>
+        <NewChatButton />
       </div>
 
       <div className="px-4 pb-4">
@@ -134,6 +132,11 @@ const MessageSidebar = async () => {
             const otherUser = conversation.users.find(
               (user) => user.id !== loggedUser!.id
             );
+
+            if (!otherUser) {
+              return null;
+            }
+
             return (
               <Link
                 key={conversation.id}

@@ -32,7 +32,5 @@ export class MessageConsumer {
     }
 
     this.logger.debug('Message created!');
-
-    channel.ack(originalMsg);
   }
 }

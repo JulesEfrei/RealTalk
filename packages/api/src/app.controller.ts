@@ -8,4 +8,9 @@ export class AppController {
   health(@Res() res): string {
     return res.status(HttpStatus.OK).json({ status: 'ok' });
   }
+
+  @Get('/protected')
+  protected(@Res() res): string {
+    return res.status(HttpStatus.OK).json({ status: 'ok' });
+  }
 }
