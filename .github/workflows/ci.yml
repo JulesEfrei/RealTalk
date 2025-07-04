@@ -132,7 +132,7 @@ jobs:
         run: cd packages/api && pnpm lint
         
       - name: Run unit tests with coverage
-        run: cd packages/api && pnpm test:unit -- --coverage --passWithNoTests
+        run: cd packages/api && pnpm test:unit -- --coverage
         
       - name: Upload test coverage report
         uses: actions/upload-artifact@v4
