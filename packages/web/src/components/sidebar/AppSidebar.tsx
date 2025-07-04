@@ -60,7 +60,7 @@ export function AppSidebar() {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
+            {/* <SidebarMenuItem>
               <SidebarMenuButton asChild>
                 <Link href="/friends">
                   <PersonIcon />
@@ -75,7 +75,7 @@ export function AppSidebar() {
                   Calendar
                 </Link>
               </SidebarMenuButton>
-            </SidebarMenuItem>
+            </SidebarMenuItem> */}
           </SidebarMenu>
         </SidebarGroup>
 
