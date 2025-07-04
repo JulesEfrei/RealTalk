@@ -13,6 +13,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
 import createClient from "@/lib/client";
 import { NewChatButton } from "./NewChatButton";
+import { formatRelativeDate } from "@/lib/date-utils";
 
 const GetAllConversations = gql(`
   query GetAllConversations {
@@ -86,13 +87,13 @@ const MessageSidebar = async () => {
         <SidebarTrigger />
       </div>
       <div className="p-4 space-y-4">
-        <div className="relative">
+        {/* <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
             placeholder="Search conversations or messages..."
             className="pl-10"
           />
-        </div>
+        </div> */}
         <NewChatButton />
       </div>
 
@@ -163,7 +164,7 @@ const MessageSidebar = async () => {
 
                 <div className="flex flex-col items-end space-y-1">
                   <span className="text-xs text-gray-500">
-                    {conversation.lastMessage}
+                    {formatRelativeDate(conversation.lastMessage)}
                   </span>
                   {0 > 0 && (
                     <Badge
