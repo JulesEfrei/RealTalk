@@ -215,8 +215,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.REGISTRY }}/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/${{ env.API_IMAGE_NAME }}
-            ${{ env.REGISTRY }}/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/${{ env.WEB_IMAGE_NAME }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.API_IMAGE_NAME }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.WEB_IMAGE_NAME }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -239,15 +239,19 @@ jobs:
           echo "${{ secrets.ENV_FILE }}" > packages/api/.env
           echo "${{ secrets.ENV_FILE }}" > packages/web/.env
 
+      - name: Set lowercase owner
+        id: lowercase_owner
+        run: echo "owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
       - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
           context: packages/api
           push: true
           tags: |
-            ${{ env.REGISTRY }}/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/${{ env.API_IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/${{ env.API_IMAGE_NAME }}:latest
-            ${{ startsWith(github.ref, 'refs/tags/v') && format('{0}/{1}/{2}:{3}', env.REGISTRY, format('$(echo "%s" | tr "[:upper:]" "[:lower:]")', github.repository_owner), env.API_IMAGE_NAME, github.ref_name) || '' }}
+            ${{ env.REGISTRY }}/${{ steps.lowercase_owner.outputs.owner }}/${{ env.API_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ steps.lowercase_owner.outputs.owner }}/${{ env.API_IMAGE_NAME }}:latest
+            ${{ startsWith(github.ref, 'refs/tags/v') && format('{0}/{1}/{2}:{3}', env.REGISTRY, steps.lowercase_owner.outputs.owner, env.API_IMAGE_NAME, github.ref_name) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
@@ -260,9 +264,9 @@ jobs:
           context: packages/web
           push: true
           tags: |
-            ${{ env.REGISTRY }}/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/${{ env.WEB_IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/${{ env.WEB_IMAGE_NAME }}:latest
-            ${{ startsWith(github.ref, 'refs/tags/v') && format('{0}/{1}/{2}:{3}', env.REGISTRY, format('$(echo "%s" | tr "[:upper:]" "[:lower:]")', github.repository_owner), env.WEB_IMAGE_NAME, github.ref_name) || '' }}
+            ${{ env.REGISTRY }}/${{ steps.lowercase_owner.outputs.owner }}/${{ env.WEB_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ steps.lowercase_owner.outputs.owner }}/${{ env.WEB_IMAGE_NAME }}:latest
+            ${{ startsWith(github.ref, 'refs/tags/v') && format('{0}/{1}/{2}:{3}', env.REGISTRY, steps.lowercase_owner.outputs.owner, env.WEB_IMAGE_NAME, github.ref_name) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
