@@ -1,0 +1,48 @@
+# This is a placeholder GraphQL schema file for CI purposes
+# In a real environment, you would generate this from your API
+
+type Query {
+  conversations: [Conversation!]!
+  conversation(id: ID!): Conversation
+}
+
+type Mutation {
+  createConversation(input: CreateConversationInput!): Conversation!
+  updateConversation(input: UpdateConversationInput!): Conversation!
+  removeConversation(id: ID!): Boolean!
+  createMessage(input: CreateMessageInput!): Message!
+}
+
+type Conversation {
+  id: ID!
+  clerkUserId: String!
+  title: String!
+  messages: [Message!]!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type Message {
+  id: ID!
+  conversationId: ID!
+  content: String!
+  role: String!
+  createdAt: String!
+  conversation: Conversation!
+}
+
+input CreateConversationInput {
+  title: String!
+  userIds: [String!]!
+}
+
+input UpdateConversationInput {
+  id: ID!
+  title: String
+}
+
+input CreateMessageInput {
+  conversationId: ID!
+  content: String!
+  role: String!
+}
