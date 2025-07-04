@@ -1,6 +1,5 @@
 import { clerkClient } from '@clerk/express';
-import { Inject, Injectable } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class AppService {

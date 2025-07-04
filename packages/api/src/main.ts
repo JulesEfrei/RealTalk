@@ -13,7 +13,7 @@ async function bootstrap() {
     transport: Transport.RMQ,
     options: {
       urls: [
-        process.env.RABBITMQ_URL! ||
+        process.env.RABBITMQ_URL ||
           (() => {
             throw new Error('RABBITMQ_URL environment variable is required');
           })(),
@@ -33,4 +33,7 @@ async function bootstrap() {
   });
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('Failed to bootstrap application:', error);
+  process.exit(1);
+});

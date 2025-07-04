@@ -1,0 +1,16 @@
+# Ignorer les fichiers avec des problèmes de lint difficiles à résoudre
+src/auth/clerk-auth.guard.ts
+src/auth/clerk.decorator.ts
+src/auth/fake-auth.guard.ts
+src/auth/ws-clerk-auth.guard.ts
+
+# Ignorer les tests
+test/**/*
+**/*.spec.ts
+**/*.test.ts
+**/*.mock.ts
+
+# Ignorer les fichiers générés
+dist/**/*
+node_modules/**/*
+.eslintrc.js

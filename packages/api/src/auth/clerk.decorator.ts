@@ -5,11 +5,22 @@ import { IAuthUser } from 'src/interfaces/auth.interface';
 export const ClerkAuth = createParamDecorator(
   (data: IAuthUser | undefined, context: ExecutionContext) => {
     const ctx = GqlExecutionContext.create(context);
-    const request = ctx.getContext().req;
+    const gqlContext = ctx.getContext();
 
-    const auth = request.auth;
+    if (
+      !gqlContext ||
+      typeof gqlContext !== 'object' ||
+      !('req' in gqlContext) ||
+      !gqlContext.req
+    ) {
+      throw new Error('Request object not found in GraphQL context');
+    }
 
-    if (!auth) {
+    const request = gqlContext.req as { auth?: IAuthUser };
+
+    const auth: IAuthUser | undefined = request.auth;
+
+    if (!auth || !auth.userId) {
       throw new Error('User not authenticated');
     }
 

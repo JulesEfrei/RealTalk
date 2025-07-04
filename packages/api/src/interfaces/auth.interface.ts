@@ -1,10 +1,9 @@
 import { AuthObject } from '@clerk/backend';
 
-declare global {
-  namespace Express {
-    interface Request {
-      auth?: AuthObject;
-    }
+// Extend Express Request interface using module augmentation
+declare module 'express' {
+  interface Request {
+    auth?: AuthObject;
   }
 }
 

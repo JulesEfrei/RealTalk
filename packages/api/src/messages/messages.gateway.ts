@@ -30,9 +30,22 @@ export class MessagesGateway {
   @SubscribeMessage('joinConversation')
   async handleJoinConversation(
     @MessageBody() conversationId: string,
-    @ConnectedSocket() client,
+    @ConnectedSocket()
+    client: {
+      handshake?: { auth?: { userId?: string } };
+      join: (room: string) => void;
+      id?: string;
+    },
   ): Promise<void> {
-    const clerkUserId = client.handshake.auth?.userId;
+    if (!client || !client.handshake || !client.handshake.auth) {
+      throw new UnauthorizedException('Invalid client connection');
+    }
+
+    const clerkUserId = client.handshake.auth.userId;
+    if (!clerkUserId) {
+      throw new UnauthorizedException('User ID not found in auth data');
+    }
+
     const conversation = await this.conversationsService.findOne(
       conversationId,
       clerkUserId,
@@ -54,8 +67,12 @@ export class MessagesGateway {
   @SubscribeMessage('leaveConversation')
   handleLeaveConversation(
     @MessageBody() conversationId: string,
-    @ConnectedSocket() client,
+    @ConnectedSocket() client: { leave: (room: string) => void; id?: string },
   ): void {
+    if (!client) {
+      this.logger.warn('Invalid client connection');
+      return;
+    }
     client.leave(conversationId);
     this.logger.log(`Client ${client.id} left conversation ${conversationId}`);
   }

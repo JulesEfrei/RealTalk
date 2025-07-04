@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { verifyToken } from '@clerk/backend';
-import { IncomingMessage } from 'http';
+// IncomingMessage is not used in this file
 import { Socket } from 'socket.io';
 
 @Injectable()
@@ -14,7 +14,17 @@ export class WsClerkAuthGuard implements CanActivate {
   private readonly logger = new Logger(WsClerkAuthGuard.name);
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const client: Socket = context.switchToWs().getClient<Socket>();
+    const client = context
+      .switchToWs()
+      .getClient<
+        Socket & { handshake: { auth: { token?: string; userId?: string } } }
+      >();
+
+    if (!client || !client.handshake || !client.handshake.auth) {
+      this.logger.warn('Invalid socket client or missing handshake data');
+      throw new UnauthorizedException('Invalid socket connection');
+    }
+
     const authToken = client.handshake.auth.token;
 
     if (!authToken) {
@@ -32,13 +42,19 @@ export class WsClerkAuthGuard implements CanActivate {
       });
 
       // Attach the userId to the client for further use in the gateway
-      client.handshake.auth.userId = decodedToken.sub;
+      if (decodedToken.sub) {
+        client.handshake.auth.userId = decodedToken.sub;
+      }
+      const clientId = client.id || 'unknown';
+      const userId = decodedToken.sub || 'unknown';
       this.logger.log(
-        `WebSocket client ${client.id} authenticated as user ${decodedToken.sub}`,
+        `WebSocket client ${clientId} authenticated as user ${userId}`,
       );
       return true;
     } catch (error) {
-      this.logger.error(`WebSocket authentication failed: ${error.message}`);
+      this.logger.error(
+        `WebSocket authentication failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
       throw new UnauthorizedException('Invalid authentication token.');
     }
   }

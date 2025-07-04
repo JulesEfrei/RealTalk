@@ -9,13 +9,13 @@ import { UpdateConversationInput } from '../../../src/conversations/dto/update-c
 describe('ConversationsService', () => {
   let service: ConversationsService;
   let prismaService: PrismaService;
-  
+
   const mockClerkUserId = 'mock-user-id';
   const mockConversationId = 'mock-conversation-id';
 
   beforeEach(async () => {
     const mockPrisma = createMockPrismaService();
-    
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ConversationsService,
@@ -25,7 +25,7 @@ describe('ConversationsService', () => {
 
     service = module.get<ConversationsService>(ConversationsService);
     prismaService = module.get<PrismaService>(PrismaService);
-    
+
     // Reset all mocks before each test
     jest.clearAllMocks();
   });
@@ -39,9 +39,12 @@ describe('ConversationsService', () => {
       const createConversationDto = {
         title: 'New Test Conversation',
       };
-      
-      await service.create({...createConversationDto, userIds: [mockClerkUserId]});
-      
+
+      await service.create({
+        ...createConversationDto,
+        userIds: [mockClerkUserId],
+      });
+
       expect(prismaService.conversation.create).toHaveBeenCalledWith({
         data: {
           title: createConversationDto.title,
@@ -54,7 +57,7 @@ describe('ConversationsService', () => {
   describe('findAll', () => {
     it('should return all conversations for a user', async () => {
       await service.findAll(mockClerkUserId);
-      
+
       expect(prismaService.conversation.findMany).toHaveBeenCalledWith({
         where: {
           clerkUserIds: { hasSome: [mockClerkUserId] },
@@ -69,7 +72,7 @@ describe('ConversationsService', () => {
   describe('findOne', () => {
     it('should return a conversation when user has access', async () => {
       await service.findOne(mockConversationId, mockClerkUserId);
-      
+
       expect(prismaService.conversation.findFirst).toHaveBeenCalledWith({
         where: {
           id: mockConversationId,
@@ -82,8 +85,10 @@ describe('ConversationsService', () => {
     });
 
     it('should return null when conversation is not found', async () => {
-      jest.spyOn(prismaService.conversation, 'findFirst').mockResolvedValueOnce(null);
-      
+      jest
+        .spyOn(prismaService.conversation, 'findFirst')
+        .mockResolvedValueOnce(null);
+
       const result = await service.findOne(mockConversationId, mockClerkUserId);
       expect(result).toBeNull();
     });
@@ -95,16 +100,16 @@ describe('ConversationsService', () => {
         id: mockConversationId,
         title: 'Updated Test Conversation',
       };
-      
+
       await service.update(updateConversationDto, mockClerkUserId);
-      
+
       expect(prismaService.conversation.findFirst).toHaveBeenCalledWith({
         where: {
           id: mockConversationId,
           clerkUserIds: { hasSome: [mockClerkUserId] },
         },
       });
-      
+
       expect(prismaService.conversation.update).toHaveBeenCalledWith({
         where: { id: mockConversationId },
         data: { title: updateConversationDto.title },
@@ -116,13 +121,15 @@ describe('ConversationsService', () => {
         id: mockConversationId,
         title: 'Updated Test Conversation',
       };
-      
-      jest.spyOn(prismaService.conversation, 'findFirst').mockResolvedValueOnce(null);
-      
-      await expect(service.update(updateConversationDto, mockClerkUserId)).rejects.toThrow(
-        ForbiddenException,
-      );
-      
+
+      jest
+        .spyOn(prismaService.conversation, 'findFirst')
+        .mockResolvedValueOnce(null);
+
+      await expect(
+        service.update(updateConversationDto, mockClerkUserId),
+      ).rejects.toThrow(ForbiddenException);
+
       expect(prismaService.conversation.update).not.toHaveBeenCalled();
     });
   });
@@ -130,26 +137,28 @@ describe('ConversationsService', () => {
   describe('remove', () => {
     it('should delete a conversation when user has access', async () => {
       await service.remove(mockConversationId, mockClerkUserId);
-      
+
       expect(prismaService.conversation.findFirst).toHaveBeenCalledWith({
         where: {
           id: mockConversationId,
           clerkUserIds: { hasSome: [mockClerkUserId] },
         },
       });
-      
+
       expect(prismaService.conversation.delete).toHaveBeenCalledWith({
         where: { id: mockConversationId },
       });
     });
 
     it('should throw ForbiddenException when user does not have access', async () => {
-      jest.spyOn(prismaService.conversation, 'findFirst').mockResolvedValueOnce(null);
-      
-      await expect(service.remove(mockConversationId, mockClerkUserId)).rejects.toThrow(
-        ForbiddenException,
-      );
-      
+      jest
+        .spyOn(prismaService.conversation, 'findFirst')
+        .mockResolvedValueOnce(null);
+
+      await expect(
+        service.remove(mockConversationId, mockClerkUserId),
+      ).rejects.toThrow(ForbiddenException);
+
       expect(prismaService.conversation.delete).not.toHaveBeenCalled();
     });
   });

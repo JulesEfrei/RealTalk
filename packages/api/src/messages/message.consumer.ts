@@ -19,7 +19,10 @@ export class MessageConsumer {
     },
     @Ctx() context: RmqContext,
   ) {
-    const channel = context.getChannelRef();
+    const channel = context.getChannelRef() as {
+      ack: (msg: unknown) => void;
+      nack: (msg: unknown, allUpTo: boolean, requeue: boolean) => void;
+    };
     const originalMsg = context.getMessage();
 
     try {
@@ -27,7 +30,10 @@ export class MessageConsumer {
       this.logger.debug(`Message ${message.id} processed successfully`);
       channel.ack(originalMsg);
     } catch (error) {
-      this.logger.error(`Failed to process message ${message.id}:`, error);
+      this.logger.error(
+        `Failed to process message ${message.id}:`,
+        error instanceof Error ? error.message : String(error),
+      );
       channel.nack(originalMsg, false, true);
     }
 

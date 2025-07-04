@@ -7,9 +7,12 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
-import { getAuth } from '@clerk/express';
+import { getAuth, type SessionAuthObject } from '@clerk/express';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { GqlExecutionContext } from '@nestjs/graphql';
+
+// Define a type for request with auth property
+type RequestWithAuth = Request & { auth?: SessionAuthObject };
 
 @Injectable()
 export class ClerkAuthGuard implements CanActivate {
@@ -18,7 +21,7 @@ export class ClerkAuthGuard implements CanActivate {
     private readonly logger: Logger = new Logger(ClerkAuthGuard.name),
   ) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  canActivate(context: ExecutionContext): boolean {
     //Make the `/health` endpoint public thanks to the @Public decorator
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
@@ -30,9 +33,9 @@ export class ClerkAuthGuard implements CanActivate {
     }
 
     if (context.getType() === 'http') {
-      const request = context.switchToHttp().getRequest<Request>();
+      const request = context.switchToHttp().getRequest<RequestWithAuth>();
 
-      const auth = getAuth(request);
+      const auth = getAuth(request) as SessionAuthObject | null;
 
       this.logger.debug('HTTP Request Auth:', {
         hasAuth: !!auth,
@@ -47,15 +50,26 @@ export class ClerkAuthGuard implements CanActivate {
       return true;
     } else {
       const gqlContext = GqlExecutionContext.create(context);
-      const request: Request = gqlContext.getContext().req;
+      const ctx = gqlContext.getContext();
+
+      if (!ctx || typeof ctx !== 'object' || !('req' in ctx) || !ctx.req) {
+        throw new UnauthorizedException(
+          'No request object found in GraphQL context',
+        );
+      }
+
+      const request = ctx.req as RequestWithAuth;
 
       this.logger.debug('GraphQL Request:', {
         hasReq: !!request,
-        headers: request?.headers,
-        authorization: request?.headers?.authorization,
+        headers: request && request.headers ? 'present' : 'absent',
+        authorization:
+          request && request.headers && request.headers.authorization
+            ? 'present'
+            : 'absent',
       });
 
-      const auth = getAuth(request);
+      const auth = getAuth(request) as SessionAuthObject | null;
 
       this.logger.debug('GraphQL Auth:', {
         hasAuth: !!auth,

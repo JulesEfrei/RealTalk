@@ -11,7 +11,7 @@ export class UsersResolver {
   async getUser(@Args('id') id: string): Promise<User | null> {
     try {
       return this.usersService.findUserById(id);
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException('Failed to fetch user');
     }
   }
@@ -22,7 +22,7 @@ export class UsersResolver {
   ): Promise<User[]> {
     try {
       return this.usersService.findUsersByIds(ids);
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException('Failed to fetch users');
     }
   }

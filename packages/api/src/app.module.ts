@@ -26,7 +26,7 @@ import { UsersModule } from './users/users.module';
       sortSchema: true,
       playground: false,
       plugins: [ApolloServerPluginLandingPageLocalDefault()],
-      context: ({ req }) => ({ req }),
+      context: ({ req }): Record<string, unknown> => ({ req }),
     }),
     PrismaModule,
     ConversationsModule,
