@@ -1,8 +1,6 @@
 import Link from "next/link";
 import {
   HomeIcon,
-  CalendarIcon,
-  PersonIcon,
   BookmarkIcon,
   PlusIcon,
 } from "@radix-ui/react-icons";
