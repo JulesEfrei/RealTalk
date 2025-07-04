@@ -215,8 +215,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.API_IMAGE_NAME }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.WEB_IMAGE_NAME }}
+            ${{ env.REGISTRY }}/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/${{ env.API_IMAGE_NAME }}
+            ${{ env.REGISTRY }}/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/${{ env.WEB_IMAGE_NAME }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -245,9 +245,9 @@ jobs:
           context: packages/api
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.API_IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.API_IMAGE_NAME }}:latest
-            ${{ startsWith(github.ref, 'refs/tags/v') && format('{0}/{1}/{2}:{3}', env.REGISTRY, github.repository_owner, env.API_IMAGE_NAME, github.ref_name) || '' }}
+            ${{ env.REGISTRY }}/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/${{ env.API_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/${{ env.API_IMAGE_NAME }}:latest
+            ${{ startsWith(github.ref, 'refs/tags/v') && format('{0}/{1}/{2}:{3}', env.REGISTRY, github.repository_owner | lower, env.API_IMAGE_NAME, github.ref_name) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
@@ -260,9 +260,9 @@ jobs:
           context: packages/web
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.WEB_IMAGE_NAME }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.WEB_IMAGE_NAME }}:latest
-            ${{ startsWith(github.ref, 'refs/tags/v') && format('{0}/{1}/{2}:{3}', env.REGISTRY, github.repository_owner, env.WEB_IMAGE_NAME, github.ref_name) || '' }}
+            ${{ env.REGISTRY }}/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/${{ env.WEB_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/${{ env.WEB_IMAGE_NAME }}:latest
+            ${{ startsWith(github.ref, 'refs/tags/v') && format('{0}/{1}/{2}:{3}', env.REGISTRY, github.repository_owner | lower, env.WEB_IMAGE_NAME, github.ref_name) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
