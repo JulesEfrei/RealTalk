@@ -169,8 +169,19 @@ const ConversationWrapper: (props: Props) => ReactNode = (props) => {
                 >
                   {message.content}
                 </ChatBubbleMessage>
-                <p className="absolute right-0 overflow-visible w-max mt-2 text-muted-foreground text-sm">
-                  {new Date(message.createdAt).toLocaleString()}
+                <p
+                  className={
+                    "absolute overflow-visible w-max mt-2 text-muted-foreground dark:text-muted text-sm " +
+                    (message.sender.id === userId ? "right-0" : "left-0")
+                  }
+                >
+                  {new Date(message.createdAt).toLocaleDateString("en-US", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </p>
               </div>
             </ChatBubble>
