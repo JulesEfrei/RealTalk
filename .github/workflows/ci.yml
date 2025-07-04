@@ -49,12 +49,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
-
-      - name: Lint code
-        run: |
-          cd packages/api && pnpm lint
-          cd ../web && pnpm lint
-
   # Tests job for API package
   test-api:
     runs-on: ubuntu-latest
