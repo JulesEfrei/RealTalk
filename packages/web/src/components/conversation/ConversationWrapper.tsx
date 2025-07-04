@@ -49,19 +49,16 @@ const ConversationWrapper: (props: Props) => ReactNode = (props) => {
   const [socket, setSocket] = useState<ReturnType<typeof io> | null>(null);
   const { getToken, userId } = useAuth();
 
-  const {
-    loading: messagesLoading,
-    error: messagesError,
-    data,
-  } = useQuery<MessagesQuery>(MESSAGES_QUERY, {
-    variables: { messagesConversationId: conversationId },
-    onCompleted: (data) => {
-      if (data?.messages) {
-        setMessages(data.messages);
-      }
-    },
-    fetchPolicy: "network-only", // Ensure fresh data
-  });
+  const { loading: messagesLoading, error: messagesError } =
+    useQuery<MessagesQuery>(MESSAGES_QUERY, {
+      variables: { messagesConversationId: conversationId },
+      onCompleted: (data) => {
+        if (data?.messages) {
+          setMessages(data.messages);
+        }
+      },
+      fetchPolicy: "network-only", // Ensure fresh data
+    });
 
   useEffect(() => {
     const connectSocket = async () => {

@@ -23,7 +23,7 @@ const searchUserSchema = z.object({
 });
 
 export const searchUser: (
-  prevState: any,
+  prevState: unknown,
   formData: FormData
 ) => Promise<{
   error?: string | undefined;
@@ -52,7 +52,9 @@ export const searchUser: (
     });
 
     if (users.length === 0) {
-      return { error: "User not found." };
+      return {
+        error: "Unable to create conversation. Please check the email address.",
+      };
     }
 
     const user = users[0];
@@ -78,7 +80,7 @@ export const searchUser: (
 
     revalidatePath("/conversation");
     return { conversationId: data.createConversation.id };
-  } catch (error) {
+  } catch {
     return { error: "An unexpected error occurred." };
   }
 };

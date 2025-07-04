@@ -1,0 +1,6 @@
+.git
+.next
+scripts
+*Dockerfile*
+node_modules
+.env
