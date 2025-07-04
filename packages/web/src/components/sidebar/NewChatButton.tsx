@@ -75,7 +75,7 @@ export function NewChatButton() {
         setError("User already added.");
         return;
       }
-      setUsers([...users, result.user as any]);
+      setUsers([...users, result.user as User]);
       setError(undefined);
       setEmail("");
     }

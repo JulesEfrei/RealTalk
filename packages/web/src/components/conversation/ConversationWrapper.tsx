@@ -9,20 +9,34 @@ import {
   CreateMessageMutation,
   Message,
   MessagesQuery,
+  ConversationQuery,
+  UpdateConversationMutation,
+  RemoveConversationMutation,
 } from "@/lib/gql/graphql";
 import { ChatInput } from "../ui/chat/chat-input";
 import { Button } from "../ui/button";
-import { CornerDownLeft } from "lucide-react";
+import { CornerDownLeft, Edit, Trash } from "lucide-react";
 import { ChatMessageList } from "../ui/chat/chat-message-list";
 import {
   ChatBubble,
   ChatBubbleAvatar,
   ChatBubbleMessage,
 } from "../ui/chat/chat-bubble";
+import { Input } from "../ui/input";
+import { useRouter } from "next/navigation";
 
 interface Props {
   conversationId: string;
 }
+
+const CONVERSATION_QUERY = gql(`
+  query Conversation($conversationId: ID!) {
+    conversation(id: $conversationId) {
+      id
+      title
+    }
+  }
+`);
 
 const MESSAGES_QUERY = gql(`
   query Messages($messagesConversationId: ID!) {
@@ -42,12 +56,42 @@ const MESSAGES_QUERY = gql(`
   }
 `);
 
+const UPDATE_CONVERSATION_MUTATION = gql(`
+  mutation UpdateConversation($updateConversationInput: UpdateConversationInput!) {
+    updateConversation(updateConversationInput: $updateConversationInput) {
+      id
+    }
+  }
+`);
+
+const REMOVE_CONVERSATION_MUTATION = gql(`
+  mutation RemoveConversation($removeConversationId: ID!) {
+    removeConversation(id: $removeConversationId) {
+      id
+    }
+  }
+`);
+
 const ConversationWrapper: (props: Props) => ReactNode = (props) => {
   const { conversationId } = props;
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [messages, setMessages] = useState<MessagesQuery["messages"]>([]);
   const [socket, setSocket] = useState<ReturnType<typeof io> | null>(null);
   const { getToken, userId } = useAuth();
+  const router = useRouter();
+
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [conversationTitle, setConversationTitle] = useState("");
+
+  const { loading: conversationLoading, error: conversationError } =
+    useQuery<ConversationQuery>(CONVERSATION_QUERY, {
+      variables: { conversationId },
+      onCompleted: (data) => {
+        if (data?.conversation?.title) {
+          setConversationTitle(data.conversation.title);
+        }
+      },
+    });
 
   const { loading: messagesLoading, error: messagesError } =
     useQuery<MessagesQuery>(MESSAGES_QUERY, {
@@ -114,6 +158,14 @@ const ConversationWrapper: (props: Props) => ReactNode = (props) => {
     CREATE_MESSAGE_MUTATION
   );
 
+  const [updateConversation] = useMutation<UpdateConversationMutation>(
+    UPDATE_CONVERSATION_MUTATION
+  );
+
+  const [removeConversation] = useMutation<RemoveConversationMutation>(
+    REMOVE_CONVERSATION_MUTATION
+  );
+
   const handleCreateMessage = async () => {
     if (!inputRef.current?.value.trim()) return;
 
@@ -134,6 +186,36 @@ const ConversationWrapper: (props: Props) => ReactNode = (props) => {
     }
   };
 
+  const handleUpdateConversationTitle = async () => {
+    if (!conversationTitle.trim()) return;
+    try {
+      await updateConversation({
+        variables: {
+          updateConversationInput: {
+            id: conversationId,
+            title: conversationTitle,
+          },
+        },
+      });
+      setIsEditingTitle(false);
+    } catch (error) {
+      console.error("Error updating conversation title:", error);
+    }
+  };
+
+  const handleRemoveConversation = async () => {
+    try {
+      await removeConversation({
+        variables: {
+          removeConversationId: conversationId,
+        },
+      });
+      router.push("/"); // Redirect to home or conversations list
+    } catch (error) {
+      console.error("Error removing conversation:", error);
+    }
+  };
+
   useEffect(() => {
     if (socket) {
       socket.on("newMessage", (message: Message) => {
@@ -142,17 +224,55 @@ const ConversationWrapper: (props: Props) => ReactNode = (props) => {
     }
   }, [socket]);
 
-  if (messagesLoading) {
+  if (messagesLoading || conversationLoading) {
     return <div>Loading conversation...</div>;
   }
 
-  if (messagesError) {
-    return <div>Error loading messages: {messagesError.message}</div>;
+  if (messagesError || conversationError) {
+    return (
+      <div>
+        Error loading messages:{" "}
+        {messagesError?.message || conversationError?.message}
+      </div>
+    );
   }
 
   return (
-    <div className="relative h-screen overflow-y-hidden p-4">
-      <div className="h-[calc(100%-100px)]">
+    <div className="relative h-screen overflow-y-hidden p-4 flex flex-col">
+      <div className="flex items-center justify-between mb-4">
+        {isEditingTitle ? (
+          <Input
+            value={conversationTitle}
+            onChange={(e) => setConversationTitle(e.target.value)}
+            onBlur={handleUpdateConversationTitle}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleUpdateConversationTitle();
+              }
+            }}
+            className="text-xl font-semibold"
+          />
+        ) : (
+          <h1 className="text-xl font-semibold flex items-center gap-2">
+            {conversationTitle}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsEditingTitle(true)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          </h1>
+        )}
+        <Button
+          variant="destructive"
+          size="icon"
+          onClick={handleRemoveConversation}
+        >
+          <Trash className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="flex-1 overflow-y-auto">
         <ChatMessageList>
           {messages.map((message) => (
             <ChatBubble
@@ -188,7 +308,7 @@ const ConversationWrapper: (props: Props) => ReactNode = (props) => {
           ))}
         </ChatMessageList>
       </div>
-      <div className="relative rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring p-1">
+      <div className="relative rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring p-1 mt-4">
         <ChatInput
           placeholder="Type your message here..."
           className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0"
