@@ -1,6 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { currentUser } from "@clerk/nextjs/server";
 import { cookies } from "next/headers";
 
 export default async function Home() {
@@ -14,8 +12,6 @@ export default async function Home() {
     const data = await res.json();
     console.log(data?.user?.data || "No user data available");
   };
-
-  const user = await currentUser();
 
   return (
     <div className="flex">

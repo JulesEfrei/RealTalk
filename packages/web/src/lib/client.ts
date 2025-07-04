@@ -6,7 +6,8 @@ const createClient = (cookies: ReadonlyRequestCookies) => {
     ssrMode: true,
     link: new HttpLink({
       uri:
-        process.env.NEXT_PUBLIC_GRAPHQL_URI || "http://localhost:3000/graphql",
+        process.env.NEXT_PUBLIC_GRAPHQL_URI_SSR ||
+        "http://localhost:3000/graphql",
       credentials: "include",
       headers: {
         Cookie: cookies.toString(),
