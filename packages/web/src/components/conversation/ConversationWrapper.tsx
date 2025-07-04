@@ -291,7 +291,7 @@ const ConversationWrapper: (props: Props) => ReactNode = (props) => {
                 </ChatBubbleMessage>
                 <p
                   className={
-                    "absolute overflow-visible w-max mt-2 text-muted-foreground dark:text-muted text-sm " +
+                    "absolute overflow-visible w-max mt-2 text-muted-foreground text-sm " +
                     (message.sender.id === userId ? "right-0" : "left-0")
                   }
                 >

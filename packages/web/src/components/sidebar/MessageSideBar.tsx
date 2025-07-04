@@ -113,7 +113,7 @@ const MessageSidebar = async () => {
                   </Avatar>
                   <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 bg-green-500 border-2 border-white rounded-full"></div>
                 </div>
-                <span className="text-xs text-gray-600 truncate max-w-20">
+                <span className="text-xs text-foreground truncate max-w-20">
                   {user.name.split(" ")[0]}
                 </span>
               </div>
@@ -154,14 +154,14 @@ const MessageSidebar = async () => {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-gray-900 truncate">
+                    <h4 className="text-sm font-medium text-foreground truncate">
                       {conversation.title}
                     </h4>
                   </div>
                 </div>
 
                 <div className="flex flex-col items-end space-y-1">
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground">
                     {formatRelativeDate(conversation.lastMessage)}
                   </span>
                   {0 > 0 && (
