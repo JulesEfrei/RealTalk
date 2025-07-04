@@ -49,10 +49,48 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+        
+      - name: Check for package.json changes
+        id: package-changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            api:
+              - 'packages/api/package.json'
+            web:
+              - 'packages/web/package.json'
+              
+      - name: Generate Prisma client
+        run: cd packages/api && pnpm prisma:generate
+        
+      - name: Check TypeScript compilation
+        run: |
+          cd packages/api && pnpm tsc --noEmit
+          cd ../web && pnpm tsc --noEmit
   # Tests job for API package
   test-api:
     runs-on: ubuntu-latest
     needs: validate
+    services:
+      # Setup PostgreSQL service for tests
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: realtalk_test
+        ports:
+          - 5432:5432
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/realtalk_test
+      NODE_ENV: test
+      CLERK_JWT_SECRET: test_jwt_secret
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -83,14 +121,35 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+        
+      - name: Generate Prisma client
+        run: cd packages/api && pnpm prisma:generate
+        
+      - name: Setup database schema
+        run: cd packages/api && pnpm prisma:db:push
 
-      - name: Run unit tests
-        run: cd packages/api && pnpm test:unit
+      - name: Run lint
+        run: cd packages/api && pnpm lint
+        
+      - name: Run unit tests with coverage
+        run: cd packages/api && pnpm test:unit -- --coverage
+        
+      - name: Upload test coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-coverage
+          path: packages/api/coverage
+          retention-days: 7
 
   # Tests job for web package
   test-web:
     runs-on: ubuntu-latest
     needs: validate
+    env:
+      NODE_ENV: test
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_dummy-key
+      CLERK_SECRET_KEY: sk_test_dummy-key
+      NEXT_PUBLIC_API_URL: http://localhost:3000/graphql
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -121,9 +180,22 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+        
+      - name: Run lint
+        run: cd packages/web && pnpm lint
+        
+      - name: Generate GraphQL types
+        run: cd packages/web && pnpm codegen
 
-      - name: Run tests
-        run: cd packages/web && pnpm test
+      - name: Run tests with coverage
+        run: cd packages/web && pnpm test -- --coverage
+        
+      - name: Upload test coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-test-coverage
+          path: packages/web/coverage
+          retention-days: 7
 
   # Build and push Docker images
   build-and-push:
